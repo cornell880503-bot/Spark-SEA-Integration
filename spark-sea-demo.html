@@ -252,7 +252,7 @@ body {
 
     <div class="task-box">
       <div class="task-lbl">User Input (code-switched, SEA context)</div>
-      "幫我規劃這個週末從新加坡去吉隆坡，禮拜六早上出發禮拜天晚上回，住一晚，想吃一頓好的中菜，預算抓 SGD 600 以內全包。"
+      <textarea id="userInput" rows="4" style="width:100%;background:transparent;border:none;color:var(--text);font-size:12px;line-height:1.65;resize:vertical;outline:none;font-family:inherit;">幫我規劃這個週末從新加坡去吉隆坡，禮拜六早上出發禮拜天晚上回，住一晚，想吃一頓好的中菜，預算抓 SGD 600 以內全包。</textarea>
     </div>
 
     <div class="col-lbl">Dependency Graph</div>
@@ -756,7 +756,8 @@ function mockToolResponse(name, args) {
 
 async function runAPI() {
   updateBudget('hotel', 200);
-  history = [{ role:'user', parts:[{ text:'幫我規劃這個週末從新加坡去吉隆坡，禮拜六早上出發禮拜天晚上回，住一晚，想吃一頓好的中菜，預算抓 SGD 600 以內全包。' }] }];
+  const userText = $('userInput').value.trim() || '幫我規劃這個週末從新加坡去吉隆坡，禮拜六早上出發禮拜天晚上回，住一晚，想吃一頓好的中菜，預算抓 SGD 600 以內全包。';
+  history = [{ role:'user', parts:[{ text: userText }] }];
   $('modelLbl').textContent = 'Gemini 3.5 Flash';
 
   let loops = 0;
