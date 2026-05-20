@@ -288,6 +288,117 @@ const CITIES = {
 };
 
 // ═══════════════════════════════════════════════════════════════
+// DYNAMIC CITY ENGINE — handles any destination, not just SEA
+// ═══════════════════════════════════════════════════════════════
+const DYNAMIC_REGIONS = {
+  AUS:{ccy:'AUD',fx:1.05,dur:'7h 45m',
+    airlines:[
+      {name:'Scoot',no:'TR 13',dep:'22:00',arr:'09:30+1',retDep:'11:30',retArr:'19:15',sgd:490,tag:'rec'},
+      {name:'Jetstar',no:'JQ 7',dep:'20:30',arr:'07:55+1',retDep:'09:30',retArr:'17:15',sgd:430,tag:'alt'},
+      {name:'Qantas',no:'QF 38',dep:'10:00',arr:'21:30',retDep:'22:00',retArr:'07:30+1',sgd:890,tag:'rej'}],
+    hotel:190,trans_local:36,trans_sgd:34,transName:'Skybus + Uber',hasGrab:false},
+  JPN:{ccy:'JPY',fx:110,dur:'7h 00m',
+    airlines:[
+      {name:'Scoot',no:'TR 808',dep:'08:00',arr:'14:55',retDep:'17:00',retArr:'22:00',sgd:380,tag:'rec'},
+      {name:'ANA',no:'NH 842',dep:'11:30',arr:'18:30',retDep:'19:30',retArr:'00:30+1',sgd:295,tag:'alt'},
+      {name:'Japan Airlines',no:'JL 711',dep:'09:00',arr:'16:00',retDep:'17:30',retArr:'22:30',sgd:440,tag:'rej'}],
+    hotel:23000,trans_local:3100,trans_sgd:28,transName:'Narita Express + IC Card',hasGrab:false},
+  KOR:{ccy:'KRW',fx:1050,dur:'6h 00m',
+    airlines:[
+      {name:'Scoot',no:'TR 702',dep:'08:30',arr:'14:30',retDep:'16:00',retArr:'21:00',sgd:280,tag:'rec'},
+      {name:'Korean Air',no:'KE 643',dep:'10:00',arr:'16:00',retDep:'17:30',retArr:'22:30',sgd:220,tag:'alt'},
+      {name:'Asiana',no:'OZ 741',dep:'13:00',arr:'19:00',retDep:'20:00',retArr:'01:00+1',sgd:340,tag:'rej'}],
+    hotel:130000,trans_local:9500,trans_sgd:9,transName:'AREX + Kakao Taxi',hasGrab:false},
+  TWN:{ccy:'TWD',fx:21,dur:'4h 30m',
+    airlines:[
+      {name:'Scoot',no:'TR 898',dep:'07:30',arr:'11:55',retDep:'14:00',retArr:'18:25',sgd:260,tag:'rec'},
+      {name:'EVA Air',no:'BR 226',dep:'09:30',arr:'13:55',retDep:'16:30',retArr:'20:55',sgd:200,tag:'alt'},
+      {name:'China Airlines',no:'CI 751',dep:'13:00',arr:'17:25',retDep:'20:00',retArr:'00:25+1',sgd:310,tag:'rej'}],
+    hotel:3800,trans_local:200,trans_sgd:10,transName:'MRT Airport Line + Taxi',hasGrab:false},
+  HKG:{ccy:'HKD',fx:5.75,dur:'3h 45m',
+    airlines:[
+      {name:'Scoot',no:'TR 600',dep:'08:00',arr:'11:45',retDep:'14:00',retArr:'17:45',sgd:240,tag:'rec'},
+      {name:'HK Express',no:'UO 751',dep:'12:30',arr:'16:15',retDep:'17:00',retArr:'20:45',sgd:180,tag:'alt'},
+      {name:'Cathay Pacific',no:'CX 714',dep:'09:00',arr:'12:45',retDep:'15:00',retArr:'18:45',sgd:350,tag:'rej'}],
+    hotel:900,trans_local:115,trans_sgd:20,transName:'Airport Express + MTR',hasGrab:false},
+  EUR:{ccy:'EUR',fx:1.45,dur:'13h 00m',
+    airlines:[
+      {name:'Singapore Airlines',no:'SQ 317',dep:'01:30',arr:'08:30',retDep:'10:30',retArr:'09:30+1',sgd:680,tag:'rec'},
+      {name:'Lufthansa',no:'LH 779',dep:'09:00',arr:'15:30',retDep:'17:00',retArr:'12:00+1',sgd:620,tag:'alt'},
+      {name:'British Airways',no:'BA 12',dep:'23:00',arr:'06:30+1',retDep:'08:00',retArr:'07:00+1',sgd:950,tag:'rej'}],
+    hotel:180,trans_local:40,trans_sgd:58,transName:'Express Train + Taxi',hasGrab:false},
+  DEFAULT:{ccy:'USD',fx:1.35,dur:'6h 00m',
+    airlines:[
+      {name:'Singapore Airlines',no:'SQ 500',dep:'08:00',arr:'14:00',retDep:'16:00',retArr:'22:00',sgd:450,tag:'rec'},
+      {name:'Scoot',no:'TR 500',dep:'14:00',arr:'20:00',retDep:'22:00',retArr:'04:00+1',sgd:380,tag:'alt'},
+      {name:'Emirates',no:'EK 500',dep:'10:00',arr:'16:00',retDep:'18:00',retArr:'00:00+1',sgd:720,tag:'rej'}],
+    hotel:150,trans_local:40,trans_sgd:30,transName:'Taxi / Uber',hasGrab:false}
+};
+
+const CUISINE_DATA = {
+  Chinese:[
+    {name:'Golden Dragon',type:'Fine Dining · Cantonese',basePrice_sgd:80,halal:false,note:'Signature seafood, private dining rooms'},
+    {name:'Jade Palace',type:'Mid-Range · Dim Sum',basePrice_sgd:42,halal:false,note:'Popular weekend brunch, no reservation needed'}],
+  Italian:[
+    {name:'Osteria Classica',type:'Fine Dining · Northern Italian',basePrice_sgd:95,halal:false,note:'Handmade pasta, extensive Barolo wine list'},
+    {name:'Trattoria del Gusto',type:'Mid-Range · Neapolitan',basePrice_sgd:52,halal:false,note:'Wood-fired pizza, casual atmosphere'}],
+  Japanese:[
+    {name:'Kōrin Sushi',type:'Fine Dining · Omakase',basePrice_sgd:180,halal:false,note:'Chef\'s 12-course tasting menu, reservation essential'},
+    {name:'Sakura Izakaya',type:'Mid-Range · Japanese',basePrice_sgd:65,halal:false,note:'Yakitori and sake, lively after-work crowd'}],
+  Malay:[
+    {name:'Istana Brasserie',type:'Fine Dining · Modern Malay',basePrice_sgd:70,halal:true,note:'Contemporary take on traditional recipes, fully halal'},
+    {name:'Warung Kampung',type:'Mid-Range · Traditional Malay',basePrice_sgd:28,halal:true,note:'Authentic nasi lemak and rendang, halal certified'}],
+  Indian:[
+    {name:'Bukhara Grand',type:'Fine Dining · North Indian',basePrice_sgd:85,halal:true,note:'Tandoor specialties, award-winning dal bukhara'},
+    {name:'Curry House',type:'Mid-Range · South Indian',basePrice_sgd:32,halal:true,note:'Thali sets, vegetarian-friendly, halal certified'}],
+  Korean:[
+    {name:'Jingan Hanok',type:'Fine Dining · Modern Korean',basePrice_sgd:110,halal:false,note:'Premium wagyu BBQ, private rooms, Han River views'},
+    {name:'Gwangjang Market Table',type:'Mid-Range · Traditional Korean',basePrice_sgd:40,halal:false,note:'Market-style communal dining, authentic bindaetteok'}],
+  _default:[
+    {name:'The Local Table',type:'Fine Dining · Contemporary',basePrice_sgd:90,halal:false,note:'Seasonal menu, local produce, tasting menu available'},
+    {name:'Bistro Central',type:'Mid-Range · Modern',basePrice_sgd:55,halal:false,note:'Casual dining, popular with locals and visitors'}]
+};
+
+// Resolve city data for ANY destination — SEA DB first, then dynamic generator
+function resolveCityData(p){
+  // Known SEA cities: use accurate DB data
+  if(p.dest && CITIES[p.dest]){
+    return {...CITIES[p.dest], grabAvail:true, isSEA:true, transName:'Grab'};
+  }
+  // Everything else: generate dynamically from region heuristics
+  const raw=(p.destRaw||'').toLowerCase();
+  let region='DEFAULT', cityName=p.destName||p.destRaw||'Unknown City';
+  if(/melbourne|mel\b|墨爾本|sydney|brisbane|perth|auckland/i.test(raw)){
+    region='AUS';
+    cityName=/sydney/i.test(raw)?'Sydney':/brisbane/i.test(raw)?'Brisbane':/perth/i.test(raw)?'Perth':/auckland/i.test(raw)?'Auckland':'Melbourne';
+  } else if(/tokyo|osaka|japan|東京|大阪|日本|kyoto/i.test(raw)){
+    region='JPN';
+    cityName=/osaka/i.test(raw)||/大阪/.test(raw)?'Osaka':/kyoto/i.test(raw)?'Kyoto':'Tokyo';
+  } else if(/seoul|korea|首爾|서울|busan|釜山/i.test(raw)){
+    region='KOR'; cityName=/busan/i.test(raw)?'Busan':'Seoul';
+  } else if(/taipei|taiwan|台北|台灣/i.test(raw)){
+    region='TWN'; cityName='Taipei';
+  } else if(/hong kong|香港/i.test(raw)){
+    region='HKG'; cityName='Hong Kong';
+  } else if(/london|paris|rome|amsterdam|berlin|倫敦|巴黎|羅馬|歐洲|europe/i.test(raw)){
+    region='EUR';
+    cityName=/paris/i.test(raw)||/巴黎/.test(raw)?'Paris':/rome/i.test(raw)||/羅馬/.test(raw)?'Rome':/amsterdam/i.test(raw)?'Amsterdam':/berlin/i.test(raw)?'Berlin':'London';
+  }
+  const rd=DYNAMIC_REGIONS[region];
+  const cuisine=p.cuisine||'Chinese';
+  const cRests=(CUISINE_DATA[cuisine]||CUISINE_DATA._default).map(r=>({
+    ...r, local:Math.round(r.basePrice_sgd*rd.fx)
+  }));
+  return {
+    name:cityName, country:region, ccy:rd.ccy, fx:rd.fx, dur:rd.dur,
+    airlines:rd.airlines, hotel:Math.round(rd.hotel),
+    grab_local:rd.trans_local, grab_sgd:rd.trans_sgd,
+    grabAvail:rd.hasGrab, transName:rd.transName, isSEA:false,
+    rests:{[cuisine]:cRests, _default:cRests}
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // DATA: SHOPPING
 // ═══════════════════════════════════════════════════════════════
 const PRODUCTS = {
@@ -404,46 +515,40 @@ const SCENE_CFG = {
 // INPUT PARSERS
 // ═══════════════════════════════════════════════════════════════
 function parseTravel(txt){
-  const lower = txt.toLowerCase();
-  // SEA destinations only — non-SEA entries map to '_OOS' (out of scope)
-  const destMap={
-    '吉隆坡':'KUL','kuala lumpur':'KUL',' kl ':'KUL','kul':'KUL',
+  const lower=txt.toLowerCase();
+  // SEA: match directly to IATA code
+  const seaMap={
+    '吉隆坡':'KUL','kuala lumpur':'KUL','kul':'KUL',
     '曼谷':'BKK','bangkok':'BKK','bkk':'BKK',
-    '雅加達':'CGK','jakarta':'CGK','cgk':'CGK','印尼':'CGK',
-    '胡志明':'SGN','ho chi minh':'SGN','hcmc':'SGN','saigon':'SGN','越南':'SGN',
+    '雅加達':'CGK','jakarta':'CGK','cgk':'CGK',
+    '胡志明':'SGN','ho chi minh':'SGN','hcmc':'SGN','saigon':'SGN',
     '峇里':'DPS','bali':'DPS','dps':'DPS',
-    // Out-of-scope: flag, then fallback
-    '墨爾本':'_OOS','melbourne':'_OOS','雪梨':'_OOS','sydney':'_OOS',
-    '倫敦':'_OOS','london':'_OOS','紐約':'_OOS','new york':'_OOS',
-    '東京':'_OOS','tokyo':'_OOS','首爾':'_OOS','seoul':'_OOS',
-    '台北':'_OOS','taipei':'_OOS','香港':'_OOS','hong kong':'_OOS',
-    '北京':'_OOS','beijing':'_OOS','上海':'_OOS','shanghai':'_OOS',
   };
-  let dest='KUL', destFound=false, destRaw='', isOOS=false;
-  for(const [k,v] of Object.entries(destMap)){
-    if(lower.includes(k)){
-      destFound=true; destRaw=k; isOOS=(v==='_OOS');
-      dest=isOOS?'KUL':v; break;
-    }
+  let dest=null, destRaw='', destFound=false;
+  for(const [k,v] of Object.entries(seaMap)){
+    if(lower.includes(k)){dest=v; destRaw=k; destFound=true; break;}
+  }
+  if(!destFound){
+    // Extract destination from natural language: 去/到/前往/travel to/visit/fly to + city
+    const m=txt.match(/(?:去|到|前往|飛往|飛去|travel(?:ling)? to|fly(?:ing)? to|visit(?:ing)?|trip to)\s*([^\s，,。.？?！!、（(【\d]{1,10})/i);
+    if(m) destRaw=m[1].trim();
+    dest='DYNAMIC';
   }
   const bm=txt.match(/(?:SGD|S\$)\s*(\d+)/i)||txt.match(/(\d+)\s*(?:SGD|S\$)/i)||txt.match(/預算[^\d]*(\d+)/);
   const budget=bm?parseInt(bm[1]):600;
-  // Cuisine map — unsupported types fall back to Chinese with warning
   const cuisineMap={
-    '中菜':'Chinese','中餐':'Chinese','chinese':'Chinese','廣東':'Chinese','粵菜':'Chinese','dim sum':'Chinese','點心':'Chinese',
-    'malay':'Malay','馬來':'Malay','nasi':'Malay',
-    '義大利':'_Italian','italian':'_Italian','意大利':'_Italian','pizza':'_Italian','pasta':'_Italian',
-    '日本':'_Japanese','japanese':'_Japanese','壽司':'_Japanese','sushi':'_Japanese','ramen':'_Japanese',
-    '印度':'_Indian','indian':'_Indian','curry':'_Indian','咖哩':'_Indian',
+    '中菜':'Chinese','中餐':'Chinese','chinese':'Chinese','廣東':'Chinese','粵菜':'Chinese','dim sum':'Chinese',
+    'malay':'Malay','馬來':'Malay','nasi lemak':'Malay',
+    '義大利':'Italian','italian':'Italian','意大利':'Italian','pizza':'Italian','pasta':'Italian',
+    '日本':'Japanese','japanese':'Japanese','壽司':'Japanese','sushi':'Japanese','ramen':'Japanese','拉麵':'Japanese',
+    '印度':'Indian','indian':'Indian','curry':'Indian','咖哩':'Indian',
+    '韓國':'Korean','korean':'Korean','燒烤':'Korean','bbq':'Korean',
   };
-  let cuisine='Chinese', cuisineFound=false, cuisineRaw='', cuisineUnsupported=false;
+  let cuisine='_default', cuisineFound=false;
   for(const [k,v] of Object.entries(cuisineMap)){
-    if(lower.includes(k)){
-      cuisineFound=true; cuisineRaw=k; cuisineUnsupported=v.startsWith('_');
-      cuisine=cuisineUnsupported?'Chinese':v; break;
-    }
+    if(lower.includes(k)){cuisine=v; cuisineFound=true; break;}
   }
-  return {dest,budget,cuisine,destFound,destRaw,isOOS,cuisineFound,cuisineRaw,cuisineUnsupported};
+  return {dest,destRaw,budget,cuisine,cuisineFound,destFound};
 }
 
 function parseShopping(txt){
@@ -500,24 +605,34 @@ const TOOLS_FOOD=[
 // ═══════════════════════════════════════════════════════════════
 function buildPrompt(s,p){
   if(s==='travel'){
-    const c=CITIES[p.dest]||CITIES.KUL;
+    const c=resolveCityData(p);
     const rec=c.airlines[0],alt=c.airlines[1],rej=c.airlines[2];
-    const rests=c.rests[p.cuisine]||c.rests.Chinese;
-    const r0sgd=Math.round(rests[0].local/c.fx), r1sgd=Math.round(rests[1].local/c.fx);
+    const cuisine=p.cuisine||'_default';
+    const rests=c.rests[cuisine]||c.rests._default||Object.values(c.rests)[0];
+    const r0sgd=rests[0].basePrice_sgd||Math.round(rests[0].local/c.fx);
+    const r1sgd=rests[1].basePrice_sgd||Math.round(rests[1].local/c.fx);
+    const transNote=c.grabAvail
+      ? `Grab super-app: ${c.ccy} ${c.grab_local} = SGD ${c.grab_sgd.toFixed(2)} each way`
+      : `⚠ Grab does NOT operate in ${c.name}. Use ${c.transName} instead: ${c.ccy} ${c.grab_local} ≈ SGD ${c.grab_sgd.toFixed(2)} each way`;
     const total=Math.round(rec.sgd+c.hotel+c.grab_sgd*2+r0sgd);
     const overage=total-p.budget;
-    return `You are a Spark SEA travel orchestration agent coordinating multi-partner services for a Singapore→${c.name} trip.
-TOOL ORDER: search_flights FIRST → book_ground_transport + find_restaurant (depend on arrival time) → get_fx_rate LAST.
-Before each tool call, write 2-3 sentences explaining: why this tool now, relevant SEA context (Grab super-app, halal parameter, cross-border FX), what you're rejecting.
-MOCK VALUES (tools will return these):
-- search_flights: ${rec.name} ${rec.no} ${rec.dep}→${rec.arr} SGD ${rec.sgd} [SELECT THIS], ${alt.name} ${alt.no} ${alt.dep}→${alt.arr} SGD ${alt.sgd} [budget alt], ${rej.name} SGD ${rej.sgd} [REJECT — overpriced]
-- book_ground_transport: Grab ${c.ccy} ${c.grab_local} = SGD ${c.grab_sgd.toFixed(2)} each way, 2 trips = SGD ${(c.grab_sgd*2).toFixed(2)}
-- find_restaurant: ${rests[0].name} ${c.ccy} ${rests[0].local} = SGD ${r0sgd}, ${rests[1].name} SGD ${r1sgd}
-- Hotel estimate SGD ${c.hotel} (pre-booked externally — include in total)
-- get_fx_rate: 1 SGD = ${c.fx} ${c.ccy}, total SGD ${total}, over_budget=true, overage=SGD ${overage}
-BUDGET CONFLICT: When get_fx_rate returns over_budget=true, STOP and present:
-Option A: Switch to ${alt.name} ${alt.no} (${alt.dep}→${alt.arr}) — saves SGD ${rec.sgd-alt.sgd}, but dinner shifts from 19:00 → 20:30
-Option B: Switch from ${rests[0].name} to ${rests[1].name} — saves SGD ${r0sgd-r1sgd}, flight unchanged`;
+    const overBudget=total>p.budget;
+    return `You are a multi-destination travel orchestration agent. You can plan trips from Singapore to ANY city worldwide.
+TOOL ORDER: search_flights FIRST → book_ground_transport + find_restaurant (both depend on flight arrival time) → get_fx_rate LAST.
+For each tool call: write 2-3 sentences of genuine reasoning — WHY this tool now, what alternatives you considered and rejected, any destination-specific context (transport availability, cuisine, FX nuances).
+KEY CONTEXT for ${c.name}:
+- ${c.grabAvail?'Grab super-app available':'Grab NOT available here — '+c.transName+' is the local equivalent'}
+- Local currency: ${c.ccy} (1 SGD ≈ ${c.fx} ${c.ccy}), flight time ~${c.dur}
+- Cuisine requested: ${cuisine==='_default'?'not specified — use local recommendations':cuisine}
+MOCK TOOL RESPONSES (tools will return these values):
+- search_flights: ${rec.name} ${rec.no} ${rec.dep}→${rec.arr} SGD ${rec.sgd} [RECOMMEND], ${alt.name} ${alt.no} ${alt.dep}→${alt.arr} SGD ${alt.sgd} [budget alt], ${rej.name} SGD ${rej.sgd} [REJECT — overpriced]
+- book_ground_transport: ${transNote}, 2 trips = SGD ${r2(c.grab_sgd*2).toFixed(2)}
+- find_restaurant: ${rests[0].name} (${rests[0].type}) SGD ${r0sgd}/pax, ${rests[1].name} SGD ${r1sgd}/pax
+- Hotel estimate SGD ${c.hotel}/night (include in total)
+- get_fx_rate: 1 SGD = ${c.fx} ${c.ccy}, total SGD ${total}, over_budget=${overBudget}${overBudget?', overage=SGD '+overage:''}
+${overBudget?`BUDGET CONFLICT: When get_fx_rate returns over_budget=true, STOP and surface trade-offs:
+Option A: Switch to ${alt.name} ${alt.no} (${alt.dep}→${alt.arr}) — saves SGD ${rec.sgd-alt.sgd}, later arrival shifts dinner from 19:00 → 20:30
+Option B: Downgrade dinner from ${rests[0].name} to ${rests[1].name} — saves SGD ${r0sgd-r1sgd}, flight unchanged`:'If total is under budget, confirm the full plan and summarise clearly.'}`;
   }
   if(s==='shopping'){
     const pr=PRODUCTS[p.product]||PRODUCTS.headphones;
@@ -567,13 +682,29 @@ function normCity(v){
 function r2(n){return Math.round(n*100)/100;}
 
 function travelMock(tool,args,p){
-  const c=CITIES[normCity(args.destination||args.city||p.dest)]||CITIES[p.dest]||CITIES.KUL;
-  const rests=c.rests[p.cuisine]||c.rests.Chinese||c.rests[Object.keys(c.rests)[0]];
-  if(tool==='search_flights') return {flights:c.airlines.map((f,i)=>({...f,selected:i===0})),recommended:c.airlines[0].name+' '+c.airlines[0].no,currency:'SGD'};
-  if(tool==='book_ground_transport') return {provider:'Grab',vehicle:'GrabCar',pickup:args.pickup_location,dropoff:args.dropoff,fare_local:c.grab_local,local_ccy:c.ccy,fare_sgd:r2(c.grab_sgd),total_2trips_sgd:r2(c.grab_sgd*2),eta_min:55};
-  if(tool==='find_restaurant') return {options:rests,selected:0,recommended:rests[0].name};
+  // Resolve city: prefer Gemini's actual args, fall back to parsed input
+  const argDest=args.destination||args.city||'';
+  const seaCode=normCity(argDest);
+  const c=seaCode
+    ? {...CITIES[seaCode], grabAvail:true, isSEA:true, transName:'Grab'}
+    : resolveCityData({...p, destRaw: argDest||p.destRaw});
+  const cuisine=args.cuisine||p.cuisine||'_default';
+  const rests=c.rests[cuisine]||c.rests._default||c.rests.Chinese||Object.values(c.rests)[0];
+  if(tool==='search_flights') return {
+    flights:c.airlines.map((f,i)=>({...f,selected:i===0})),
+    recommended:c.airlines[0].name+' '+c.airlines[0].no,currency:'SGD'
+  };
+  if(tool==='book_ground_transport') return {
+    provider:c.grabAvail?'Grab':c.transName.split('+')[0].trim(),
+    vehicle:c.grabAvail?'GrabCar':'Airport Transport',
+    pickup:args.pickup_location,dropoff:args.dropoff,
+    fare_local:c.grab_local,local_ccy:c.ccy,
+    fare_sgd:r2(c.grab_sgd),total_2trips_sgd:r2(c.grab_sgd*2),eta_min:45,
+    note:c.grabAvail?'Grab super-app':'⚠ Grab not available — using '+c.transName
+  };
+  if(tool==='find_restaurant') return {options:rests,selected:0,recommended:rests[0].name,fx:c.fx};
   if(tool==='get_fx_rate'){
-    const r0sgd=Math.round(rests[0].local/c.fx);
+    const r0sgd=rests[0].basePrice_sgd||Math.round(rests[0].local/c.fx);
     const total=r2(c.airlines[0].sgd+c.hotel+c.grab_sgd*2+r0sgd);
     const overage=r2(total-p.budget);
     return {rate:c.fx,from:'SGD',to:c.ccy,breakdown:{flights:c.airlines[0].sgd,hotel:c.hotel,transport:r2(c.grab_sgd*2),restaurant:r0sgd},total:total,over_budget:total>p.budget,overage:Math.max(0,overage),limit:p.budget};
@@ -890,13 +1021,14 @@ async function runDemo(){
     const mockData=generateMock(scene,step.tool,step.params,p);
     // for display, attach sel info
     if(step.tool==='search_flights') mockData.sel=0;
-    if(step.tool==='find_restaurant') mockData.fx=(CITIES[p.dest]||CITIES.KUL).fx;
+    const cd=scene==='travel'?resolveCityData(p):null;
+    if(step.tool==='find_restaurant') mockData.fx=cd?cd.fx:3.4;
     setDone(card); showResult(card,step.tool,mockData);
 
-    if(scene==='travel'){
-      if(step.tool==='search_flights') setBudget(0,(CITIES[p.dest]||CITIES.KUL).airlines[0].sgd);
-      if(step.tool==='book_ground_transport'){const c=CITIES[p.dest]||CITIES.KUL;setBudget(1,c.hotel);setBudget(2,r2(c.grab_sgd*2));}
-      if(step.tool==='find_restaurant'){const c=CITIES[p.dest]||CITIES.KUL;const rs=c.rests[p.cuisine]||c.rests.Chinese;setBudget(3,Math.round(rs[0].local/c.fx));}
+    if(scene==='travel'&&cd){
+      if(step.tool==='search_flights') setBudget(0,cd.airlines[0].sgd);
+      if(step.tool==='book_ground_transport'){setBudget(1,cd.hotel);setBudget(2,r2(cd.grab_sgd*2));}
+      if(step.tool==='find_restaurant'){const rs=cd.rests[p.cuisine]||cd.rests._default||Object.values(cd.rests)[0];setBudget(3,rs[0].basePrice_sgd||Math.round(rs[0].local/cd.fx));}
     } else if(scene==='shopping'){
       if(step.tool==='search_products'){const pr=PRODUCTS[p.product]||PRODUCTS.headphones;setBudget(0,pr.listings[1].price_sgd);}
       if(step.tool==='compare_prices'){const pr=PRODUCTS[p.product]||PRODUCTS.headphones;setBudget(1,pr.listings[1].ship_sgd);}
@@ -940,11 +1072,12 @@ async function runReplanDemo(choice){
     await sleep(950);
     const mock=generateMock(scene,step.tool,step.params,currentParsed);
     if(step.tool==='search_flights'){mock.sel=step.flightSel||0;}
-    if(step.tool==='find_restaurant'){mock.sel=step.restSel||0;mock.fx=(CITIES[currentParsed.dest]||CITIES.KUL).fx;}
+    const rcd=scene==='travel'?resolveCityData(currentParsed):null;
+    if(step.tool==='find_restaurant'){mock.sel=step.restSel||0;mock.fx=rcd?rcd.fx:3.4;}
     setDone(card); showResult(card,step.tool,mock);
     // update budget
-    if(scene==='travel'&&choice==='A'&&step.tool==='search_flights') setBudget(0,(CITIES[currentParsed.dest]||CITIES.KUL).airlines[1].sgd);
-    if(scene==='travel'&&choice==='B'&&step.tool==='find_restaurant'){const c=CITIES[currentParsed.dest]||CITIES.KUL;const rs=c.rests[currentParsed.cuisine]||c.rests.Chinese;setBudget(3,Math.round(rs[1].local/c.fx));}
+    if(scene==='travel'&&choice==='A'&&step.tool==='search_flights'&&rcd) setBudget(0,rcd.airlines[1].sgd);
+    if(scene==='travel'&&choice==='B'&&step.tool==='find_restaurant'&&rcd){const rs=rcd.rests[currentParsed.cuisine]||rcd.rests._default||Object.values(rcd.rests)[0];setBudget(3,rs[1].basePrice_sgd||Math.round(rs[1].local/rcd.fx));}
     if(scene==='shopping'&&choice==='A'&&step.tool==='checkout'){ /* totals stay */ }
     if(scene==='shopping'&&choice==='B'&&step.tool==='checkout'){const pr=PRODUCTS[currentParsed.product]||PRODUCTS.headphones;setBudget(0,pr.alt.price_sgd);setBudget(1,0);setBudget(2,0);}
     if(scene==='food'&&choice==='A'){if(step.tool==='place_order'){const h=currentParsed.headcount||6;const m=FOOD_REST[1],sl=FOOD_REST[2];const hh=Math.ceil(h/2),vh=h-Math.ceil(h/2);const tot=m.pax*hh+sl.pax*vh+m.delivery+sl.delivery+Math.round((m.pax*hh+sl.pax*vh)*0.1);setBudget(0,m.pax*hh+sl.pax*vh);setBudget(1,m.delivery+sl.delivery);setBudget(2,Math.round((m.pax*hh+sl.pax*vh)*0.1));}}
@@ -1041,14 +1174,15 @@ async function runAPI(){
       await sleep(750);
       const mock=generateMock(scene,fc.name,fc.args,currentParsed);
       if(fc.name==='search_flights'){mock.sel=0;}
-      if(fc.name==='find_restaurant'){mock.fx=(CITIES[currentParsed.dest]||CITIES.KUL).fx;}
+      if(fc.name==='find_restaurant') mock.fx=resolveCityData(currentParsed).fx;
       setDone(card);showResult(card,fc.name,mock);
       lastMockResult=mock;
       // budget updates
       if(scene==='travel'){
-        if(fc.name==='search_flights') setBudget(0,(CITIES[currentParsed.dest]||CITIES.KUL).airlines[0].sgd);
-        if(fc.name==='book_ground_transport'){const c=CITIES[currentParsed.dest]||CITIES.KUL;setBudget(1,c.hotel);setBudget(2,r2(c.grab_sgd*2));}
-        if(fc.name==='find_restaurant'){const c=CITIES[currentParsed.dest]||CITIES.KUL;const rs=c.rests[currentParsed.cuisine]||c.rests.Chinese;setBudget(3,Math.round(rs[0].local/c.fx));}
+        const cd=resolveCityData(currentParsed);
+        if(fc.name==='search_flights') setBudget(0,cd.airlines[0].sgd);
+        if(fc.name==='book_ground_transport'){setBudget(1,cd.hotel);setBudget(2,r2(cd.grab_sgd*2));}
+        if(fc.name==='find_restaurant'){const rr=cd.rests[currentParsed.cuisine]||cd.rests._default||Object.values(cd.rests)[0];setBudget(3,rr[0].basePrice_sgd||Math.round(rr[0].local/cd.fx));}
         if(fc.name==='get_fx_rate'&&mock.over_budget){$('overAlert').classList.add('on');$('overAmt').textContent=Math.round(mock.overage||44);}
       } else if(scene==='shopping'){
         if(fc.name==='search_products'){const pr=PRODUCTS[currentParsed.product]||PRODUCTS.headphones;setBudget(0,pr.listings[1].price_sgd);}
@@ -1143,25 +1277,21 @@ async function startOrchestration(){
   $('timeline').innerHTML='';$('traceWrap').innerHTML='';
   $('overAlert').classList.remove('on');$('overlay').classList.remove('on');
   resetBudget();
-  if(scene==='travel') setBudget(1,(CITIES[currentParsed.dest]||CITIES.KUL).hotel);
+  if(scene==='travel') setBudget(1,resolveCityData(currentParsed).hotel);
   $('runBtn').disabled=true;
 
   // ── Input parse summary ─────────────────────────────────────────
   const key=$('apiKey').value.trim();
-  const modeLabel=(!demoMode&&key)?'🤖 GEMINI LIVE':'⚡ SCRIPTED SIMULATION — reasoning below is pre-written, not model-generated. Enter API key for real Gemini inference.';
+  const modeLabel=(!demoMode&&key)?'🤖 GEMINI LIVE — reasoning below is generated by the model in real time':'⚡ SCRIPTED SIMULATION — reasoning is pre-written. Enter API key for real Gemini inference.';
   if(scene==='travel'){
     const p=currentParsed;
-    const city=CITIES[p.dest]||CITIES.KUL;
-    const warns=[];
-    if(p.isOOS) warns.push(`⚠ <strong style="color:var(--red)">'${p.destRaw}' is not a SEA destination</strong> — this demo covers KUL · BKK · CGK · SGN · DPS. Falling back to <strong>KUL (Kuala Lumpur)</strong>.`);
-    else if(!p.destFound) warns.push(`ℹ No destination detected → defaulting to <strong>KUL</strong>.`);
-    if(p.cuisineUnsupported) warns.push(`⚠ <strong>'${p.cuisineRaw}'</strong> cuisine not in SEA restaurant DB → substituting <strong>Chinese</strong> restaurants.`);
+    const city=resolveCityData(p);
     const summary=[
-      `<strong>Destination:</strong> ${city.name} (${p.dest})${p.isOOS?' <span style="color:var(--red)">[⚠ OOS fallback]</span>':p.destFound?' <span style="color:var(--green)">✓</span>':' <span style="color:var(--muted)">[default]</span>'}`,
-      `<strong>Cuisine:</strong> ${p.cuisine}${p.cuisineUnsupported?' <span style="color:var(--red)">[⚠ unsupported, substituted]</span>':p.cuisineFound?' <span style="color:var(--green)">✓</span>':' <span style="color:var(--muted)">[default]</span>'}`,
+      `<strong>Destination:</strong> ${city.name}${p.destFound?' <span style="color:var(--green)">✓ (SEA DB)</span>':p.destRaw?' <span style="color:var(--yellow)">[dynamic — any city supported]</span>':' <span style="color:var(--muted)">[default: KUL]</span>'}`,
+      `<strong>Cuisine:</strong> ${p.cuisine==='_default'?'<span style="color:var(--muted)">not specified — model will recommend</span>':p.cuisine+(p.cuisineFound?' <span style="color:var(--green)">✓</span>':'')}`,
       `<strong>Budget:</strong> SGD ${p.budget}`,
-      `<strong>Mode:</strong> ${modeLabel}`,
-      ...(warns.length?['<br>'+warns.join('<br>')]:[''])
+      `<strong>Transport:</strong> ${city.grabAvail?'Grab (SEA super-app available)':'<span style="color:var(--yellow)">'+city.transName+' — Grab not available here</span>'}`,
+      `<strong>Mode:</strong> ${modeLabel}`
     ].join('<br>');
     addTrace('INPUT PARSE',summary,'parse');
   } else if(scene==='shopping'){
