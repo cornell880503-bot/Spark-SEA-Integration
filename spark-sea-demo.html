@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spark for Southeast Asia — Multi-Partner Orchestration Probe</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --bg-card: #161b22;
+  --border: #30363d;
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --blue: #4285F4;
+  --red: #EA4335;
+  --yellow: #FBBC04;
+  --green: #34A853;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px; line-height: 1.5;
+  height: 100vh; overflow: hidden;
+  display: flex; flex-direction: column;
+}
+/* Header */
+.hdr {
+  padding: 10px 18px; border-bottom: 1px solid var(--border);
+  background: var(--bg-card); display: flex; align-items: center;
+  justify-content: space-between; flex-shrink: 0; gap: 12px;
+}
+.hdr-left { display: flex; align-items: center; gap: 10px; }
+.logo { display: flex; gap: 3px; }
+.logo span { width: 8px; height: 8px; border-radius: 50%; }
+.hdr h1 { font-size: 14px; font-weight: 600; letter-spacing: -0.3px; }
+.hdr-sub { font-size: 11px; color: var(--muted); }
+.hdr-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.api-input {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 5px; padding: 5px 8px; color: var(--text);
+  font-size: 11px; width: 190px;
+}
+.ctrl-btn {
+  padding: 5px 10px; border: 1px solid var(--border); border-radius: 5px;
+  background: transparent; color: var(--muted); font-size: 11px;
+  cursor: pointer; display: flex; align-items: center; gap: 5px;
+}
+.ctrl-btn.on { border-color: var(--yellow); color: var(--yellow); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+.ctrl-btn.on .dot { background: var(--yellow); }
+.model-tag { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+.model-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+/* Main layout */
+.main {
+  display: grid; grid-template-columns: 255px 1fr 275px;
+  flex: 1; overflow: hidden; gap: 1px; background: var(--border);
+}
+.col { background: var(--bg); overflow-y: auto; padding: 14px; }
+.col-lbl {
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--muted); margin-bottom: 10px;
+}
+/* Left column */
+.task-box {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 7px; padding: 11px; margin-bottom: 14px;
+  font-size: 12px; line-height: 1.65;
+}
+.task-lbl { font-size: 10px; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+.dep-svg { width: 100%; margin-bottom: 14px; }
+.budget-box {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 7px; padding: 11px;
+}
+.budget-head { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 7px; }
+.bar-bg { height: 7px; background: #21262d; border-radius: 4px; overflow: hidden; }
+.bar-fill {
+  height: 100%; background: var(--blue); border-radius: 4px;
+  transition: width 0.6s ease, background 0.3s; width: 0%;
+}
+.bar-fill.over { background: var(--red); }
+.bkdn { margin-top: 8px; font-size: 11px; color: var(--muted); }
+.bk-row { display: flex; justify-content: space-between; padding: 1px 0; }
+.bk-total {
+  border-top: 1px solid var(--border); margin-top: 4px; padding-top: 4px;
+  display: flex; justify-content: space-between; font-weight: 600; color: var(--text);
+}
+.bk-total.over { color: var(--red); }
+.run-btn {
+  width: 100%; padding: 9px; background: var(--blue); color: white;
+  border: none; border-radius: 6px; font-size: 13px; font-weight: 600;
+  cursor: pointer; margin-top: 11px;
+}
+.run-btn:hover { opacity: 0.88; }
+.run-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+/* SEA context */
+.sea-box { margin-top: 14px; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+.sea-toggle {
+  width: 100%; padding: 9px 11px; background: var(--bg-card); border: none;
+  color: var(--text); text-align: left; cursor: pointer; font-size: 11px;
+  display: flex; justify-content: space-between;
+}
+.sea-body { padding: 11px; font-size: 11px; line-height: 1.65; color: var(--muted); display: none; }
+.sea-body.open { display: block; }
+.sea-item { padding: 5px 0; border-bottom: 1px solid var(--border); }
+.sea-item:last-child { border-bottom: none; }
+.sea-item strong { color: var(--text); }
+/* Middle column */
+.timeline { display: flex; flex-direction: column; gap: 10px; }
+.over-alert {
+  background: rgba(234,67,53,0.1); border: 1px solid var(--red);
+  border-radius: 7px; padding: 10px; margin-bottom: 10px;
+  font-size: 12px; display: none;
+}
+.over-alert.on { display: block; }
+/* Tool cards */
+.tcard {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 7px; padding: 11px; position: relative; overflow: hidden;
+}
+.tcard::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+}
+.tcard.flight::before { background: var(--blue); }
+.tcard.transport::before { background: var(--green); }
+.tcard.restaurant::before { background: var(--yellow); }
+.tcard.fx::before { background: var(--red); }
+.tcard-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.tcard-name { display: flex; align-items: center; gap: 7px; font-weight: 600; font-size: 13px; }
+.badge {
+  font-size: 10px; font-weight: 600; padding: 2px 6px;
+  border-radius: 3px; text-transform: uppercase; letter-spacing: 0.4px;
+}
+.b-flight { background: rgba(66,133,244,0.2); color: var(--blue); }
+.b-grab  { background: rgba(52,168,83,0.2);  color: var(--green); }
+.b-rest  { background: rgba(251,188,4,0.2);  color: var(--yellow); }
+.b-fx    { background: rgba(234,67,53,0.2);  color: var(--red); }
+.replan-badge {
+  font-size: 10px; background: rgba(66,133,244,0.2); color: var(--blue);
+  padding: 2px 6px; border-radius: 3px; font-weight: 600;
+}
+.tstatus { font-size: 11px; display: flex; align-items: center; gap: 4px; }
+.sdot { width: 6px; height: 6px; border-radius: 50%; }
+.s-pending .sdot { background: var(--muted); }
+.s-calling .sdot { background: var(--yellow); animation: blink 1s infinite; }
+.s-done    .sdot { background: var(--green); }
+.s-error   .sdot { background: var(--red); }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+.tparams {
+  font-family: 'SF Mono','Cascadia Code','Fira Code',monospace;
+  font-size: 10px; color: var(--muted); background: #0d1117;
+  border-radius: 4px; padding: 7px; margin-bottom: 7px; white-space: pre;
+}
+.tresult { font-size: 11px; display: none; }
+.tresult.on { display: block; }
+.rrow { display: flex; justify-content: space-between; padding: 2px 0; }
+.rlbl { color: var(--muted); }
+.rval { font-weight: 500; }
+.foption {
+  background: #0d1117; border-radius: 4px; padding: 7px;
+  margin-bottom: 3px; display: flex; justify-content: space-between; align-items: center;
+  border: 1px solid transparent;
+}
+.foption.sel { border-color: var(--blue); }
+.foption.rej { opacity: 0.45; }
+/* Tradeoff overlay */
+.overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.72);
+  display: none; align-items: center; justify-content: center; z-index: 100;
+}
+.overlay.on { display: flex; }
+.modal {
+  background: var(--bg-card); border: 1px solid var(--red);
+  border-radius: 10px; padding: 22px; max-width: 510px; width: 92%;
+}
+.modal-title {
+  font-size: 15px; font-weight: 700; color: var(--red);
+  margin-bottom: 6px; display: flex; align-items: center; gap: 7px;
+}
+.modal-sub { color: var(--muted); font-size: 12px; margin-bottom: 18px; line-height: 1.6; }
+.to-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.to-btn {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 7px;
+  padding: 14px; cursor: pointer; text-align: left; color: var(--text);
+  transition: border-color 0.18s;
+}
+.to-btn:hover { border-color: var(--blue); }
+.to-lbl { font-size: 14px; font-weight: 700; margin-bottom: 5px; color: var(--blue); }
+.to-title { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+.to-detail { font-size: 11px; color: var(--muted); line-height: 1.5; }
+.to-save { font-size: 12px; font-weight: 600; color: var(--green); margin-top: 7px; }
+/* Right column - trace */
+.trace-wrap { display: flex; flex-direction: column; gap: 10px; }
+.trace-entry {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 6px; padding: 10px;
+  font-family: 'SF Mono','Cascadia Code','Fira Code',monospace;
+  font-size: 11px; line-height: 1.75;
+}
+.trace-step { color: var(--muted); margin-bottom: 3px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+.trace-txt { color: #a8d8a8; }
+.trace-txt.dec { color: var(--yellow); }
+.trace-txt.conf { color: var(--red); }
+.trace-txt.mem { color: #89cff0; }
+/* Status bar */
+.sbar {
+  padding: 5px 18px; background: var(--bg-card);
+  border-top: 1px solid var(--border); font-size: 11px; color: var(--muted);
+  display: flex; justify-content: space-between; flex-shrink: 0;
+}
+/* Empty state */
+.empty { text-align: center; padding: 36px 16px; color: var(--muted); font-size: 12px; }
+.empty-icon { font-size: 28px; margin-bottom: 10px; opacity: 0.4; }
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #30363d; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="hdr">
+  <div class="hdr-left">
+    <div class="logo">
+      <span style="background:var(--blue)"></span>
+      <span style="background:var(--red)"></span>
+      <span style="background:var(--yellow)"></span>
+      <span style="background:var(--green)"></span>
+    </div>
+    <div>
+      <h1>Spark for Southeast Asia — Multi-Partner Orchestration Probe</h1>
+      <div class="hdr-sub">I/O 2026 Spark capability probe · Gemini function-calling · 4 mock partner tools · agentic judgment on budget conflict</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <input type="password" id="apiKey" class="api-input" placeholder="Gemini API key (optional)">
+    <button id="demoBtn" class="ctrl-btn" onclick="toggleDemo()">
+      <span class="dot"></span><span id="demoLbl">Demo Mode</span>
+    </button>
+    <div class="model-tag"><span class="model-dot"></span><span id="modelLbl">Ready</span></div>
+  </div>
+</div>
+
+<!-- Main 3-column layout -->
+<div class="main">
+
+  <!-- LEFT: Task + Graph + Budget -->
+  <div class="col">
+    <div class="col-lbl">Task + Dependency Graph</div>
+
+    <div class="task-box">
+      <div class="task-lbl">User Input (code-switched, SEA context)</div>
+      "幫我規劃這個週末從新加坡去吉隆坡，禮拜六早上出發禮拜天晚上回，住一晚，想吃一頓好的中菜，預算抓 SGD 600 以內全包。"
+    </div>
+
+    <div class="col-lbl">Dependency Graph</div>
+    <svg class="dep-svg" viewBox="0 0 227 208" xmlns="http://www.w3.org/2000/svg">
+      <!-- search_flights -->
+      <rect id="n-sf" x="13" y="8" width="201" height="34" rx="5" fill="#161b22" stroke="#4285F4" stroke-width="1.5"/>
+      <text x="113" y="21" text-anchor="middle" fill="#4285F4" font-size="10" font-family="monospace" font-weight="600">search_flights</text>
+      <text x="113" y="35" text-anchor="middle" fill="#8b949e" font-size="8.5" font-family="monospace">AirAsia · Scoot · Jetstar</text>
+      <!-- book_ground_transport -->
+      <rect id="n-gt" x="8" y="96" width="100" height="34" rx="5" fill="#161b22" stroke="#34A853" stroke-width="1.5"/>
+      <text x="58" y="109" text-anchor="middle" fill="#34A853" font-size="9" font-family="monospace" font-weight="600">book_ground_</text>
+      <text x="58" y="123" text-anchor="middle" fill="#34A853" font-size="9" font-family="monospace" font-weight="600">transport</text>
+      <!-- find_restaurant -->
+      <rect id="n-fr" x="119" y="96" width="100" height="34" rx="5" fill="#161b22" stroke="#FBBC04" stroke-width="1.5"/>
+      <text x="169" y="109" text-anchor="middle" fill="#FBBC04" font-size="9" font-family="monospace" font-weight="600">find_</text>
+      <text x="169" y="123" text-anchor="middle" fill="#FBBC04" font-size="9" font-family="monospace" font-weight="600">restaurant</text>
+      <!-- get_fx_rate -->
+      <rect id="n-fx" x="63" y="168" width="101" height="32" rx="5" fill="#161b22" stroke="#EA4335" stroke-width="1.5"/>
+      <text x="113" y="181" text-anchor="middle" fill="#EA4335" font-size="9" font-family="monospace" font-weight="600">get_fx_rate</text>
+      <text x="113" y="194" text-anchor="middle" fill="#8b949e" font-size="8" font-family="monospace">budget check</text>
+      <!-- Arrows -->
+      <defs>
+        <marker id="ag" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3z" fill="#34A853"/></marker>
+        <marker id="ay" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3z" fill="#FBBC04"/></marker>
+        <marker id="ar" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3z" fill="#EA4335"/></marker>
+      </defs>
+      <line x1="58" y1="42" x2="58" y2="96" stroke="#30363d" stroke-width="1.5" marker-end="url(#ag)"/>
+      <line x1="169" y1="42" x2="169" y2="96" stroke="#30363d" stroke-width="1.5" marker-end="url(#ay)"/>
+      <line x1="78" y1="130" x2="96" y2="168" stroke="#30363d" stroke-width="1.5" marker-end="url(#ar)"/>
+      <line x1="149" y1="130" x2="131" y2="168" stroke="#30363d" stroke-width="1.5" marker-end="url(#ar)"/>
+    </svg>
+
+    <div class="col-lbl">Budget Tracker</div>
+    <div class="budget-box">
+      <div class="budget-head">
+        <span>SGD <span id="bSpent">0</span></span>
+        <span>/ SGD 600</span>
+      </div>
+      <div class="bar-bg"><div class="bar-fill" id="bBar"></div></div>
+      <div class="bkdn">
+        <div class="bk-row"><span>✈ Flights</span><span id="cFlight">—</span></div>
+        <div class="bk-row"><span>🏨 Hotel (est.)</span><span id="cHotel">—</span></div>
+        <div class="bk-row"><span>🚗 Ground transport</span><span id="cTransport">—</span></div>
+        <div class="bk-row"><span>🍽 Restaurant</span><span id="cRest">—</span></div>
+        <div class="bk-total" id="bTotal"><span>Total</span><span>SGD <span id="bTotalVal">0</span></span></div>
+      </div>
+    </div>
+
+    <button class="run-btn" id="runBtn" onclick="startOrchestration()">▶ Run Orchestration</button>
+
+    <div class="sea-box">
+      <button class="sea-toggle" onclick="toggleSea()">
+        <span>Why these partners? (SEA context)</span><span id="seaIcon">▼</span>
+      </button>
+      <div class="sea-body" id="seaBody">
+        <div class="sea-item"><strong>Grab vs. Uber</strong><br>In SEA, Grab is ride + food + pay in one super-app. One Spark connector covers what the US needs three separate integrations for (Uber + DoorDash + Venmo).</div>
+        <div class="sea-item"><strong>Cross-border SG↔KL</strong><br>Busiest leisure corridor in SEA. Multi-currency (SGD/MYR), LCC-first aviation, and cross-border Grab availability create orchestration complexity absent from US Spark.</div>
+        <div class="sea-item"><strong>Halal dimension</strong><br>~60% of Malaysia is Muslim. <code>halal_required</code> is a first-class parameter for any SEA restaurant connector — this parameter doesn't exist in US-trained Spark defaults.</div>
+        <div class="sea-item"><strong>Code-switching</strong><br>SEA users naturally mix Mandarin, English, and Malay mid-sentence. The demo input is intentionally code-switched — Gemini handles it; classic NLU wouldn't.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MIDDLE: Orchestration Timeline -->
+  <div class="col">
+    <div class="col-lbl">Orchestration Timeline</div>
+    <div class="over-alert" id="overAlert">
+      ⚠ <strong>Budget exceeded by SGD <span id="overAmt">0</span></strong> — Agent pausing for human decision. Choose a trade-off below.
+    </div>
+    <div class="timeline" id="timeline">
+      <div class="empty"><div class="empty-icon">◎</div><div>Orchestration not started</div><div style="margin-top:5px;font-size:11px">Enter API key or enable Demo Mode, then click Run</div></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Reasoning Trace -->
+  <div class="col">
+    <div class="col-lbl">Reasoning Trace</div>
+    <div class="trace-wrap" id="traceWrap">
+      <div class="empty"><div class="empty-icon">≡</div><div>Agent reasoning will appear here</div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Trade-off Modal -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-title">⚠ Budget Conflict — Human Decision Required</div>
+    <div class="modal-sub">
+      Estimated total: <strong style="color:var(--red)">SGD 644</strong> &nbsp;·&nbsp; Budget: <strong>SGD 600</strong> &nbsp;·&nbsp; Overage: <strong style="color:var(--red)">SGD 44</strong><br>
+      Agent has paused. This trade-off involves value judgments (time vs. money) that should not be automated.
+    </div>
+    <div class="to-opts">
+      <button class="to-btn" onclick="pick('A')">
+        <div class="to-lbl">Option A</div>
+        <div class="to-title">Switch to Later Scoot Flight</div>
+        <div class="to-detail">Scoot TR 600 departs 14:30, lands 15:55 (vs AirAsia 09:25). Saves SGD 70 on flights. Dinner reservation shifts 19:00 → 20:30 to account for later arrival.</div>
+        <div class="to-save">Saves ~SGD 70 → Total SGD 574 ✓</div>
+      </button>
+      <button class="to-btn" onclick="pick('B')">
+        <div class="to-lbl">Option B</div>
+        <div class="to-title">Switch to Mid-Range Restaurant</div>
+        <div class="to-detail">Golden Phoenix (MYR 340, SGD 100) instead of Jade Palace fine dining (MYR 520, SGD 153). Same Cantonese cuisine. Flight and timing unchanged.</div>
+        <div class="to-save">Saves ~SGD 55 → Total SGD 589 ✓</div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Status bar -->
+<div class="sbar">
+  <span id="statusTxt">Ready · Enter API key or enable Demo Mode to start</span>
+  <span id="sessionInfo">Gemini 3.5 Flash · function_calling · SEA partner tools v1 · I/O 2026</span>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────
+let demoMode = false;
+let running = false;
+let history = [];
+let budget = { flights: 0, hotel: 0, transport: 0, restaurant: 0 };
+
+// ── Mock data ──────────────────────────────────────────────────
+const MOCK = {
+  search_flights: {
+    options: [
+      { airline:'AirAsia', no:'AK 710', dep:'08:00', arr:'09:25', retNo:'AK 711', retDep:'18:00', retArr:'19:25', sgd:245, dur:'1h 25m', tag:'recommended' },
+      { airline:'Scoot',   no:'TR 600', dep:'14:30', arr:'15:55', retNo:'TR 601', retDep:'20:00', retArr:'21:25', sgd:175, dur:'1h 25m', tag:'budget_alt' },
+      { airline:'Jetstar', no:'3K 512', dep:'10:00', arr:'11:25', retNo:'3K 513', retDep:'16:00', retArr:'17:25', sgd:295, dur:'1h 25m', tag:'rejected' },
+    ],
+    selected: 0
+  },
+  book_ground_transport: {
+    provider:'Grab', type:'GrabCar',
+    pickup:'KLIA2', dropoff:'Bukit Bintang',
+    fare_myr:75, fare_sgd:22.06, eta:55, trips:2, total_sgd:44.12
+  },
+  find_restaurant: {
+    options: [
+      { name:'Jade Palace Seafood Restaurant', type:'Fine Dining · Cantonese', loc:'Pavilion KL', myr:520, sgd:152.94, times:['12:00','19:00','20:30'], halal:false, note:'Michelin-recommended' },
+      { name:'Golden Phoenix Chinese Restaurant', type:'Mid-Range · Cantonese & Dim Sum', loc:'Hotel Equatorial KL', myr:340, sgd:100.00, times:['12:00','18:30','19:30','20:00'], halal:false, note:'Popular with locals, walk-in friendly' },
+    ],
+    selected: 0
+  },
+  get_fx_rate: {
+    rate:3.40, total:644.12,
+    breakdown:{ flights:245, hotel:200, transport:44.12, restaurant:155 },
+    over_budget:true, limit:600, overage:44.12
+  }
+};
+
+// ── Demo script ────────────────────────────────────────────────
+const SCRIPT = [
+  {
+    tool:'search_flights',
+    step:'STEP 1',
+    reason:'Starting with flights — all downstream steps depend on the arrival time. Cross-border SIN→KUL has three LCC options: AirAsia, Scoot, and Jetstar. Rejecting Jetstar upfront: SGD 295 for the same 1h25m route with no service differentiation is unjustifiable. AirAsia 08:00 landing 09:25 gives maximum day usage; selecting it. Scoot 14:30 preserved as a budget fallback.',
+    params:{ origin:'SIN', destination:'KUL', depart_date:'2026-05-24', return_date:'2026-05-25', max_price_sgd:600 }
+  },
+  {
+    tool:'book_ground_transport',
+    step:'STEP 2',
+    reason:'Flight lands KLIA2 at 09:25. Booking Grab for airport transfer — Grab is the dominant ground transport platform in SEA, operating ride + food + payment in a single super-app (vs. Uber which never achieved super-app status in this market). Pre-booking locks the MYR 75 rate and eliminates FX exposure at pickup. Need 2 trips: arrival transfer + departure day.',
+    params:{ provider:'Grab', pickup_location:'KLIA2', pickup_time:'09:25', dropoff:'Bukit Bintang' }
+  },
+  {
+    tool:'find_restaurant',
+    step:'STEP 3',
+    reason:'Arrival 09:25 + Grab (~55 min) + hotel check-in = ready by ~11:30. Targeting dinner at 19:00. Setting halal_required=false per user\'s request (Chinese restaurant preferred), but flagging: ~60% of Malaysia\'s population is Muslim, so halal_required is a critical SEA parameter that US Spark connectors don\'t surface. Any production connector here must make this first-class.',
+    params:{ city:'Kuala Lumpur', cuisine:'Chinese', party_size:1, preferred_time:'19:00', halal_required:false }
+  },
+  {
+    tool:'get_fx_rate',
+    step:'STEP 4',
+    reason:'Aggregating full trip cost for budget check. Flights SGD 245 + hotel SGD 200 (MYR 680, Bukit Bintang mid-range, pre-booked externally) + Grab x2 SGD 44.12 + Jade Palace SGD 155 = SGD 644. Rate: 1 SGD = 3.40 MYR. Checking against SGD 600 budget ceiling.',
+    params:{ from_ccy:'SGD', to_ccy:'MYR', total_amount_sgd:644.12 },
+    conflict: true
+  }
+];
+
+const REPLAN = {
+  A: [
+    {
+      tool:'search_flights', step:'REPLAN A1',
+      reason:'[MEMORY: User chose Option A — switch flight to save SGD 70] Re-selecting Scoot TR 600 (14:30 → 15:55). This propagates downstream: Grab pickup time shifts to 15:55, and dinner reservation must move to ≥20:00. The SGD 70 saving brings total from SGD 644 to SGD 574, within the SGD 600 budget.',
+      params:{ origin:'SIN', destination:'KUL', selected:'Scoot TR 600 (14:30→15:55)' },
+      selected: 1
+    },
+    {
+      tool:'book_ground_transport', step:'REPLAN A2',
+      reason:'[MEMORY: Arrival time changed 09:25 → 15:55] Updating Grab pickup to 15:55 at KLIA2. Same route, same fare MYR 75. Hotel check-in shifts to ~17:30, giving ~3h buffer before dinner at 20:30.',
+      params:{ provider:'Grab', pickup_location:'KLIA2', pickup_time:'15:55', dropoff:'Bukit Bintang' }
+    },
+    {
+      tool:'find_restaurant', step:'REPLAN A3',
+      reason:'[MEMORY: Landing 15:55, hotel ~17:30] Shifting reservation from 19:00 → 20:30 at Jade Palace. Their last seating is 21:00 — this slot is confirmed available. User chose to save on the flight, not the restaurant experience; keeping fine dining.',
+      params:{ city:'Kuala Lumpur', cuisine:'Chinese', party_size:1, preferred_time:'20:30', halal_required:false },
+      selected: 0, time: '20:30'
+    }
+  ],
+  B: [
+    {
+      tool:'find_restaurant', step:'REPLAN B1',
+      reason:'[MEMORY: User chose Option B — switch restaurant, keep AirAsia flight] Switching from Jade Palace (SGD 153) to Golden Phoenix (SGD 100) — same Cantonese cuisine focus, popular with KL locals, walk-in friendly. Flight AirAsia AK710 08:00 unchanged; dinner at 19:00 unchanged. New total: SGD 245 + SGD 200 + SGD 44 + SGD 100 = SGD 589, within budget.',
+      params:{ city:'Kuala Lumpur', cuisine:'Chinese', party_size:1, preferred_time:'19:00', halal_required:false, price_tier:'mid_range' },
+      selected: 1
+    }
+  ]
+};
+
+// ── UI helpers ─────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+function setStatus(t) { $('statusTxt').textContent = t; }
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function updateBudget(key, val) {
+  budget[key] = val;
+  const total = budget.flights + budget.hotel + budget.transport + budget.restaurant;
+  const pct = Math.min((total / 600) * 100, 100);
+  $('bSpent').textContent = total.toFixed(0);
+  $('bBar').style.width = pct + '%';
+  $('bBar').classList.toggle('over', total > 600);
+  $('bTotal').classList.toggle('over', total > 600);
+  $('bTotalVal').textContent = total.toFixed(0);
+  if (key === 'flights')   $('cFlight').textContent    = val > 0 ? 'SGD ' + val.toFixed(0) : '—';
+  if (key === 'hotel')     $('cHotel').textContent      = val > 0 ? 'SGD ' + val.toFixed(0) : '—';
+  if (key === 'transport') $('cTransport').textContent  = val > 0 ? 'SGD ' + val.toFixed(2) : '—';
+  if (key === 'restaurant')$('cRest').textContent       = val > 0 ? 'SGD ' + val.toFixed(0) : '—';
+}
+
+function addTrace(step, text, type) {
+  const w = $('traceWrap');
+  if (w.querySelector('.empty')) w.innerHTML = '';
+  const e = document.createElement('div');
+  e.className = 'trace-entry';
+  const cls = type === 'dec' ? 'dec' : type === 'conf' ? 'conf' : type === 'mem' ? 'mem' : '';
+  e.innerHTML = `<div class="trace-step">${step}</div><div class="trace-txt ${cls}">${text}</div>`;
+  w.appendChild(e);
+  w.scrollTop = w.scrollHeight;
+}
+
+function makeCard(tool, params, isReplan) {
+  const tl = $('timeline');
+  if (tl.querySelector('.empty')) tl.innerHTML = '';
+  const map = {
+    search_flights:       { cls:'flight',     badge:'b-flight', lbl:'AirAsia / Scoot / Jetstar' },
+    book_ground_transport:{ cls:'transport',   badge:'b-grab',   lbl:'Grab' },
+    find_restaurant:      { cls:'restaurant',  badge:'b-rest',   lbl:'Restaurant API' },
+    get_fx_rate:          { cls:'fx',          badge:'b-fx',     lbl:'FX + Budget' }
+  };
+  const m = map[tool];
+  const card = document.createElement('div');
+  const uid = 'c' + Date.now() + Math.random().toString(36).slice(2);
+  card.className = `tcard ${m.cls}`;
+  card.id = uid;
+  const pStr = JSON.stringify(params, null, 2).replace(/^{|}$/g, '').trim();
+  card.innerHTML = `
+    <div class="tcard-head">
+      <div class="tcard-name">
+        <span class="badge ${m.badge}">${m.lbl}</span>
+        <span>${tool}</span>
+        ${isReplan ? '<span class="replan-badge">↻ REPLAN</span>' : ''}
+      </div>
+      <div class="tstatus s-calling"><span class="sdot"></span><span class="slbl">Calling…</span></div>
+    </div>
+    <div class="tparams">${pStr}</div>
+    <div class="tresult" id="tr-${uid}"></div>
+  `;
+  tl.appendChild(card);
+  tl.scrollTop = tl.scrollHeight;
+  return card;
+}
+
+function setCardStatus(card, s) {
+  const el = card.querySelector('.tstatus');
+  el.className = `tstatus s-${s}`;
+  el.querySelector('.slbl').textContent = s === 'calling' ? 'Calling…' : s === 'done' ? 'Done' : s === 'pending' ? 'Pending' : 'Error';
+}
+
+function showResult(card, tool, mockData) {
+  const el = card.querySelector('.tresult');
+  el.classList.add('on');
+  let h = '';
+
+  if (tool === 'search_flights') {
+    mockData.options.forEach((f, i) => {
+      const cls = i === mockData.selected ? 'sel' : i === 2 ? 'rej' : '';
+      const tag = i === mockData.selected ? '✓ Selected' : i === 2 ? '✗ Rejected (overpriced)' : 'Alt';
+      h += `<div class="foption ${cls}">
+        <div><div style="font-weight:600;font-size:12px">${f.airline} ${f.no}</div>
+             <div style="color:var(--muted);font-size:11px">${f.dep}→${f.arr} · return ${f.retDep}→${f.retArr}</div></div>
+        <div style="text-align:right"><div style="font-weight:600">SGD ${f.sgd}</div>
+             <div style="color:var(--muted);font-size:10px">${tag}</div></div>
+      </div>`;
+    });
+  } else if (tool === 'book_ground_transport') {
+    h = `<div class="rrow"><span class="rlbl">Provider</span><span class="rval">Grab (GrabCar)</span></div>
+         <div class="rrow"><span class="rlbl">Route</span><span class="rval">${mockData.pickup} → ${mockData.dropoff}</span></div>
+         <div class="rrow"><span class="rlbl">Fare (each way)</span><span class="rval">MYR ${mockData.fare_myr} ≈ SGD ${mockData.fare_sgd.toFixed(2)}</span></div>
+         <div class="rrow"><span class="rlbl">Total (2 trips)</span><span class="rval" style="color:var(--green)">SGD ${mockData.total_sgd.toFixed(2)}</span></div>
+         <div class="rrow"><span class="rlbl">ETA</span><span class="rval">${mockData.eta} min drive</span></div>`;
+  } else if (tool === 'find_restaurant') {
+    const r = mockData.options[mockData.selected];
+    h = `<div class="rrow"><span class="rlbl">Selected</span><span class="rval">${r.name}</span></div>
+         <div class="rrow"><span class="rlbl">Type</span><span class="rval">${r.type}</span></div>
+         <div class="rrow"><span class="rlbl">Location</span><span class="rval">${r.loc}</span></div>
+         <div class="rrow"><span class="rlbl">Price/pax</span><span class="rval">MYR ${r.myr} ≈ SGD ${r.sgd.toFixed(0)}</span></div>
+         <div class="rrow"><span class="rlbl">Halal</span><span class="rval">${r.halal ? '✓ Yes' : '✗ No'}</span></div>
+         <div class="rrow"><span class="rlbl">Note</span><span class="rval" style="color:var(--muted)">${r.note}</span></div>`;
+  } else if (tool === 'get_fx_rate') {
+    const oc = mockData.over_budget ? 'style="color:var(--red)"' : 'style="color:var(--green)"';
+    h = `<div class="rrow"><span class="rlbl">Rate</span><span class="rval">1 SGD = ${mockData.rate} MYR</span></div>
+         <div class="rrow"><span class="rlbl">Flights</span><span class="rval">SGD ${mockData.breakdown.flights}</span></div>
+         <div class="rrow"><span class="rlbl">Hotel</span><span class="rval">SGD ${mockData.breakdown.hotel}</span></div>
+         <div class="rrow"><span class="rlbl">Transport</span><span class="rval">SGD ${mockData.breakdown.transport.toFixed(2)}</span></div>
+         <div class="rrow"><span class="rlbl">Restaurant</span><span class="rval">SGD ${mockData.breakdown.restaurant}</span></div>
+         <div class="rrow" ${oc}><span class="rlbl">TOTAL</span><span class="rval" style="font-weight:700">SGD ${mockData.total.toFixed(2)} ${mockData.over_budget ? '⚠ OVER BUDGET' : '✓ Within budget'}</span></div>`;
+  }
+  el.innerHTML = h;
+}
+
+// ── Demo mode orchestration ────────────────────────────────────
+async function runDemo() {
+  updateBudget('hotel', 200);
+  setStatus('Demo Mode · scripted orchestration running…');
+
+  for (const step of SCRIPT) {
+    addTrace(step.step + ' · ' + step.tool.toUpperCase(), step.reason);
+    const card = makeCard(step.tool, step.params, false);
+    setStatus('Calling ' + step.tool + '…');
+    await sleep(1100);
+
+    const data = MOCK[step.tool];
+    setCardStatus(card, 'done');
+    showResult(card, step.tool, data);
+
+    if (step.tool === 'search_flights')        updateBudget('flights', 245);
+    if (step.tool === 'book_ground_transport') updateBudget('transport', 44.12);
+    if (step.tool === 'find_restaurant')       updateBudget('restaurant', 155);
+
+    await sleep(500);
+
+    if (step.conflict) {
+      addTrace('CONFLICT DETECTED', '⚠ Total SGD 644 exceeds SGD 600 by SGD 44. Halting orchestration. Trade-offs require value judgments (time vs. money, experience vs. cost) that should not be automated — surfacing to user. This is the "ask for permission before sensitive actions" principle from Spark.', 'conf');
+      $('overAlert').classList.add('on');
+      $('overAmt').textContent = '44';
+      await sleep(700);
+      $('overlay').classList.add('on');
+      setStatus('Awaiting user decision on budget trade-off…');
+      return;
+    }
+    await sleep(350);
+  }
+}
+
+async function runReplan(choice) {
+  $('overlay').classList.remove('on');
+  $('overAlert').classList.remove('on');
+
+  addTrace('USER DECISION', `Option ${choice} selected. ${choice === 'A' ? 'Re-planning: flight → ground transport → restaurant (all three affected by later arrival).' : 'Re-planning: restaurant only (flight unchanged, timing unchanged).'}`, 'dec');
+
+  const steps = REPLAN[choice];
+  for (const step of steps) {
+    addTrace(step.step + ' · ' + step.tool.toUpperCase(), step.reason, 'mem');
+    const card = makeCard(step.tool, step.params, true);
+    setStatus('Re-planning: ' + step.tool + '…');
+    await sleep(950);
+
+    let data = JSON.parse(JSON.stringify(MOCK[step.tool]));
+    if (step.selected !== undefined) data.selected = step.selected;
+    setCardStatus(card, 'done');
+    showResult(card, step.tool, data);
+    await sleep(450);
+  }
+
+  if (choice === 'A') {
+    updateBudget('flights', 175);
+    const t = (175 + 200 + 44.12 + 155).toFixed(0);
+    addTrace('REPLAN COMPLETE', `✓ All affected steps updated. New total SGD ${t} (within SGD 600). Dinner reservation confirmed at 20:30 — Jade Palace's last seating window. All downstream dependencies resolved.`, 'dec');
+    setStatus(`Option A complete · SGD ${t} · Within budget ✓`);
+  } else {
+    updateBudget('restaurant', 100);
+    const t = (245 + 200 + 44.12 + 100).toFixed(0);
+    addTrace('REPLAN COMPLETE', `✓ Restaurant switched. New total SGD ${t} (within SGD 600). Flight AirAsia AK710 and dinner at 19:00 unchanged. Golden Phoenix is walk-in friendly — no reservation needed.`, 'dec');
+    setStatus(`Option B complete · SGD ${t} · Within budget ✓`);
+  }
+
+  $('runBtn').disabled = false;
+  running = false;
+}
+
+// ── Gemini API function calling ────────────────────────────────
+const TOOL_DECLS = [
+  {
+    name: 'search_flights',
+    description: 'Search flights between cities. CALL THIS FIRST — all downstream tools depend on the arrival time.',
+    parameters: { type:'OBJECT', properties: {
+      origin:       { type:'STRING', description:'IATA code (e.g. SIN)' },
+      destination:  { type:'STRING', description:'IATA code (e.g. KUL)' },
+      depart_date:  { type:'STRING', description:'YYYY-MM-DD' },
+      return_date:  { type:'STRING', description:'YYYY-MM-DD' },
+      max_price_sgd:{ type:'NUMBER', description:'Max RT budget in SGD' }
+    }, required:['origin','destination','depart_date','return_date'] }
+  },
+  {
+    name: 'book_ground_transport',
+    description: 'Book Grab airport transfer. Call AFTER search_flights — pickup_time must match flight arrival.',
+    parameters: { type:'OBJECT', properties: {
+      provider:        { type:'STRING', description:'Default: Grab (dominant SEA super-app)' },
+      pickup_location: { type:'STRING', description:'Airport code or terminal' },
+      pickup_time:     { type:'STRING', description:'HH:MM, must match flight arrival' },
+      dropoff:         { type:'STRING', description:'Hotel district or address' }
+    }, required:['pickup_location','pickup_time','dropoff'] }
+  },
+  {
+    name: 'find_restaurant',
+    description: 'Find and reserve a restaurant. Note: halal_required is a critical SEA parameter (~60% Muslim in Malaysia). Preferred time should be 2-3h after landing.',
+    parameters: { type:'OBJECT', properties: {
+      city:           { type:'STRING' },
+      cuisine:        { type:'STRING' },
+      party_size:     { type:'NUMBER' },
+      preferred_time: { type:'STRING', description:'HH:MM' },
+      halal_required: { type:'BOOLEAN', description:'First-class SEA parameter — always set explicitly' }
+    }, required:['city','cuisine','party_size','preferred_time','halal_required'] }
+  },
+  {
+    name: 'get_fx_rate',
+    description: 'Get SGD→MYR rate and check total against SGD 600 budget. CALL LAST after all costs known. Returns over_budget flag.',
+    parameters: { type:'OBJECT', properties: {
+      from_ccy:         { type:'STRING' },
+      to_ccy:           { type:'STRING' },
+      total_amount_sgd: { type:'NUMBER', description:'Sum of all trip costs in SGD' }
+    }, required:['from_ccy','to_ccy','total_amount_sgd'] }
+  }
+];
+
+const SYS_PROMPT = `You are a Spark SEA travel orchestration agent. You coordinate partner services for cross-border Southeast Asia travel.
+
+TOOL ORDER (strict dependency):
+1. search_flights FIRST — arrival time drives all downstream steps
+2. book_ground_transport — pickup_time = flight arrival
+3. find_restaurant — preferred_time = arrival + ~2-3h buffer
+4. get_fx_rate LAST — sum all costs, check against SGD 600 budget
+
+BEFORE EACH TOOL CALL, write 2-3 sentences in your response explaining:
+- Why you're calling this tool now
+- Relevant SEA context (Grab as super-app, halal parameters, cross-border FX, code-switching)
+- What alternatives you're rejecting and why
+
+MOCK VALUES the tools will return:
+- search_flights: AirAsia AK710 08:00→09:25 SGD 245 (select this), Scoot TR600 14:30→15:55 SGD 175 (budget alt), Jetstar 3K512 SGD 295 (reject — overpriced)
+- book_ground_transport: Grab KLIA2→Bukit Bintang MYR 75 = SGD 22.06 each way, 2 trips = SGD 44.12
+- find_restaurant: Jade Palace fine dining MYR 520 = SGD 153, Golden Phoenix mid-range MYR 340 = SGD 100
+- Hotel estimated SGD 200 (pre-booked externally — include in total)
+- get_fx_rate: total SGD 644, over_budget=true, overage SGD 44
+
+WHEN get_fx_rate returns over_budget=true:
+- Stop tool calls immediately
+- State that you're pausing for human judgment (budget overruns involve value trade-offs)
+- Present exactly: "Option A: Scoot TR600 (14:30→15:55, saves SGD 70, dinner shifts 19:00→20:30)" and "Option B: Switch to Golden Phoenix mid-range restaurant (saves SGD 55, flight unchanged)"`;
+
+async function callGemini(msgs) {
+  const key = $('apiKey').value.trim();
+  if (!key) throw new Error('no-key');
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: SYS_PROMPT }] },
+        contents: msgs,
+        tools: [{ function_declarations: TOOL_DECLS }],
+        generationConfig: { temperature: 0.2, maxOutputTokens: 1024 }
+      })
+    }
+  );
+  if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || `HTTP ${res.status}`); }
+  return res.json();
+}
+
+function mockToolResponse(name, args) {
+  if (name === 'search_flights') {
+    updateBudget('flights', 245);
+    return { flights: MOCK.search_flights.options.map((f,i) => ({ ...f, recommended: i===0 })), selected: 'AirAsia AK710 — best morning timing' };
+  }
+  if (name === 'book_ground_transport') {
+    updateBudget('transport', 44.12);
+    return { provider:'Grab', fare_myr:75, fare_sgd:22.06, total_two_trips_sgd:44.12, eta_minutes:55 };
+  }
+  if (name === 'find_restaurant') {
+    updateBudget('restaurant', 155);
+    return { options: MOCK.find_restaurant.options, recommended: MOCK.find_restaurant.options[0].name };
+  }
+  if (name === 'get_fx_rate') {
+    return { rate:3.40, total_sgd:644.12, breakdown:MOCK.get_fx_rate.breakdown, over_budget:true, overage_sgd:44.12, alert:'BUDGET EXCEEDED — pause for human trade-off decision' };
+  }
+}
+
+async function runAPI() {
+  updateBudget('hotel', 200);
+  history = [{ role:'user', parts:[{ text:'幫我規劃這個週末從新加坡去吉隆坡，禮拜六早上出發禮拜天晚上回，住一晚，想吃一頓好的中菜，預算抓 SGD 600 以內全包。' }] }];
+  $('modelLbl').textContent = 'Gemini 3.5 Flash';
+
+  let loops = 0;
+  while (loops < 8) {
+    setStatus(`Gemini API call ${loops + 1}…`);
+    let resp;
+    try { resp = await callGemini(history); }
+    catch (err) {
+      addTrace('API FALLBACK', `API error: ${err.message}. Switching to Demo Mode.`, 'conf');
+      demoMode = true; $('demoBtn').classList.add('on'); $('demoLbl').textContent = 'Demo Mode ON'; $('modelLbl').textContent = 'Demo Mode';
+      await runDemo(); return;
+    }
+
+    const parts = resp.candidates?.[0]?.content?.parts || [];
+    history.push({ role:'model', parts });
+
+    let reasoning = '', fcs = [];
+    for (const p of parts) {
+      if (p.text) reasoning += p.text;
+      if (p.functionCall) fcs.push(p.functionCall);
+    }
+
+    if (reasoning.trim()) {
+      const stepLabel = fcs.length ? `STEP ${loops+1} · ${fcs[0].name.toUpperCase()}` : 'AGENT';
+      addTrace(stepLabel, reasoning.trim());
+    }
+
+    if (!fcs.length) {
+      // Check if budget conflict mentioned
+      if (reasoning.includes('over') || reasoning.includes('budget') || reasoning.includes('Option A')) {
+        $('overAlert').classList.add('on'); $('overAmt').textContent = '44';
+        await sleep(400); $('overlay').classList.add('on');
+        setStatus('Awaiting user decision…');
+        return;
+      }
+      setStatus('Orchestration complete');
+      $('runBtn').disabled = false; running = false; return;
+    }
+
+    const frs = [];
+    for (const fc of fcs) {
+      const card = makeCard(fc.name, fc.args, false);
+      await sleep(750);
+      const result = mockToolResponse(fc.name, fc.args);
+      setCardStatus(card, 'done');
+      showResult(card, fc.name, MOCK[fc.name]);
+      if (fc.name === 'get_fx_rate' && result.over_budget) {
+        await sleep(400);
+        $('overAlert').classList.add('on'); $('overAmt').textContent = '44';
+      }
+      frs.push({ functionResponse: { name: fc.name, response: result } });
+      loops++;
+    }
+    history.push({ role:'user', parts: frs });
+    await sleep(200);
+  }
+
+  if ($('overAlert').classList.contains('on')) {
+    await sleep(400); $('overlay').classList.add('on'); setStatus('Awaiting user decision…');
+  } else {
+    $('runBtn').disabled = false; running = false;
+  }
+}
+
+async function runReplanAPI(choice) {
+  $('overlay').classList.remove('on'); $('overAlert').classList.remove('on');
+  addTrace('USER DECISION', `Option ${choice} selected.`, 'dec');
+
+  const choiceTxt = choice === 'A'
+    ? "Option A — switch to Scoot TR 600 (14:30→15:55). I understand dinner shifts to 20:30."
+    : "Option B — keep AirAsia flight, switch to Golden Phoenix restaurant.";
+  history.push({ role:'user', parts:[{ text: choiceTxt }] });
+
+  let loops = 0;
+  while (loops < 5) {
+    let resp;
+    try { resp = await callGemini(history); }
+    catch { await runReplan(choice); return; }
+
+    const parts = resp.candidates?.[0]?.content?.parts || [];
+    history.push({ role:'model', parts });
+    let reasoning = '', fcs = [];
+    for (const p of parts) { if (p.text) reasoning += p.text; if (p.functionCall) fcs.push(p.functionCall); }
+
+    if (reasoning.trim()) addTrace(`REPLAN · ${fcs.length ? fcs[0].name.toUpperCase() : 'COMPLETE'}`, reasoning.trim(), 'mem');
+    if (!fcs.length) break;
+
+    const frs = [];
+    for (const fc of fcs) {
+      const card = makeCard(fc.name, fc.args, true);
+      await sleep(750);
+      let data = JSON.parse(JSON.stringify(MOCK[fc.name]));
+      if (fc.name === 'search_flights' && choice === 'A') data.selected = 1;
+      if (fc.name === 'find_restaurant' && choice === 'B') data.selected = 1;
+      setCardStatus(card, 'done');
+      showResult(card, fc.name, data);
+      if (choice === 'A' && fc.name === 'search_flights') updateBudget('flights', 175);
+      if (choice === 'B' && fc.name === 'find_restaurant') updateBudget('restaurant', 100);
+      frs.push({ functionResponse: { name: fc.name, response: mockToolResponse(fc.name, fc.args) } });
+      loops++;
+    }
+    history.push({ role:'user', parts: frs });
+    await sleep(200);
+  }
+
+  const t = (budget.flights + budget.hotel + budget.transport + budget.restaurant).toFixed(0);
+  addTrace('REPLAN COMPLETE', `✓ New total SGD ${t} — within SGD 600. All dependencies resolved.`, 'dec');
+  setStatus(`Option ${choice} complete · SGD ${t} · Within budget ✓`);
+  $('runBtn').disabled = false; running = false;
+}
+
+// ── Entry points ──────────────────────────────────────────────
+async function startOrchestration() {
+  if (running) return;
+  running = true;
+
+  // Reset
+  $('timeline').innerHTML = '';
+  $('traceWrap').innerHTML = '';
+  $('overAlert').classList.remove('on');
+  $('overlay').classList.remove('on');
+  budget = { flights:0, hotel:0, transport:0, restaurant:0 };
+  ['flights','hotel','transport','restaurant'].forEach(k => updateBudget(k, 0));
+  $('runBtn').disabled = true;
+
+  const key = $('apiKey').value.trim();
+  if (demoMode || !key) {
+    if (!demoMode) addTrace('INIT', 'No API key — running Demo Mode (pre-scripted orchestration). Enable Demo Mode toggle or enter a Gemini API key for live API calls.');
+    await runDemo();
+  } else {
+    await runAPI();
+  }
+}
+
+async function pick(choice) {
+  const key = $('apiKey').value.trim();
+  if (demoMode || !key) { await runReplan(choice); }
+  else { await runReplanAPI(choice); }
+}
+
+function toggleDemo() {
+  demoMode = !demoMode;
+  $('demoBtn').classList.toggle('on', demoMode);
+  $('demoLbl').textContent = demoMode ? 'Demo Mode ON' : 'Demo Mode';
+  $('modelLbl').textContent = demoMode ? 'Demo Mode' : 'Ready';
+}
+
+function toggleSea() {
+  const b = $('seaBody'); b.classList.toggle('open');
+  $('seaIcon').textContent = b.classList.contains('open') ? '▲' : '▼';
+}
+</script>
+</body>
+</html>
