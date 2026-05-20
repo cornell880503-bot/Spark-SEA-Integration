@@ -445,28 +445,29 @@ const SCENE_CFG = {
     defaultInput:'幫我規劃這個週末從新加坡去吉隆坡，禮拜六早上出發禮拜天晚上回，住一晚，想吃一頓好的中菜，預算抓 SGD 600 以內全包。',
     bLabels:['✈ Flights','🏨 Hotel (est.)','🚗 Ground transport','🍽 Restaurant'],
     bRow4:true,
-    depSVG:`<svg class="dep-svg" viewBox="0 0 227 208" xmlns="http://www.w3.org/2000/svg">
-      <rect x="13" y="8" width="201" height="34" rx="5" fill="#161b22" stroke="#4285F4" stroke-width="1.5"/>
-      <text x="113" y="21" text-anchor="middle" fill="#4285F4" font-size="10" font-family="monospace" font-weight="600">search_flights</text>
-      <text x="113" y="35" text-anchor="middle" fill="#8b949e" font-size="8.5" font-family="monospace">AirAsia · Scoot · Jetstar</text>
-      <rect x="8" y="96" width="100" height="34" rx="5" fill="#161b22" stroke="#34A853" stroke-width="1.5"/>
-      <text x="58" y="109" text-anchor="middle" fill="#34A853" font-size="9" font-family="monospace" font-weight="600">book_ground_</text>
-      <text x="58" y="123" text-anchor="middle" fill="#34A853" font-size="9" font-family="monospace" font-weight="600">transport</text>
-      <rect x="119" y="96" width="100" height="34" rx="5" fill="#161b22" stroke="#FBBC04" stroke-width="1.5"/>
-      <text x="169" y="109" text-anchor="middle" fill="#FBBC04" font-size="9" font-family="monospace" font-weight="600">find_</text>
-      <text x="169" y="123" text-anchor="middle" fill="#FBBC04" font-size="9" font-family="monospace" font-weight="600">restaurant</text>
-      <rect x="63" y="168" width="101" height="32" rx="5" fill="#161b22" stroke="#EA4335" stroke-width="1.5"/>
-      <text x="113" y="181" text-anchor="middle" fill="#EA4335" font-size="9" font-family="monospace" font-weight="600">get_fx_rate</text>
-      <text x="113" y="194" text-anchor="middle" fill="#8b949e" font-size="8" font-family="monospace">budget check</text>
+    depSVG:`<svg class="dep-svg" viewBox="0 0 220 290" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <marker id="ag" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3z" fill="#34A853"/></marker>
-        <marker id="ay" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3z" fill="#FBBC04"/></marker>
-        <marker id="ar" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3z" fill="#EA4335"/></marker>
+        <marker id="at" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3z" fill="#30363d"/></marker>
+        <marker id="ab" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L6,3z" fill="#4285F4"/></marker>
       </defs>
-      <line x1="58" y1="42" x2="58" y2="96" stroke="#30363d" stroke-width="1.5" marker-end="url(#ag)"/>
-      <line x1="169" y1="42" x2="169" y2="96" stroke="#30363d" stroke-width="1.5" marker-end="url(#ay)"/>
-      <line x1="78" y1="130" x2="96" y2="168" stroke="#30363d" stroke-width="1.5" marker-end="url(#ar)"/>
-      <line x1="149" y1="130" x2="131" y2="168" stroke="#30363d" stroke-width="1.5" marker-end="url(#ar)"/>
+      <rect x="20" y="6" width="180" height="30" rx="5" fill="#161b22" stroke="#4285F4" stroke-width="1.5"/>
+      <text x="110" y="26" text-anchor="middle" fill="#4285F4" font-size="10" font-family="monospace" font-weight="600">search_flights</text>
+      <line x1="110" y1="36" x2="110" y2="54" stroke="#30363d" stroke-width="1.5" marker-end="url(#at)"/>
+      <rect x="20" y="54" width="180" height="30" rx="5" fill="#161b22" stroke="#34A853" stroke-width="1.5"/>
+      <text x="110" y="74" text-anchor="middle" fill="#34A853" font-size="10" font-family="monospace" font-weight="600">book_hotel</text>
+      <line x1="110" y1="84" x2="110" y2="102" stroke="#30363d" stroke-width="1.5" marker-end="url(#at)"/>
+      <rect x="20" y="102" width="180" height="30" rx="5" fill="#161b22" stroke="#FBBC04" stroke-width="1.5"/>
+      <text x="110" y="121" text-anchor="middle" fill="#FBBC04" font-size="9.5" font-family="monospace" font-weight="600">book_ground_transport</text>
+      <line x1="110" y1="132" x2="110" y2="150" stroke="#30363d" stroke-width="1.5" marker-end="url(#at)"/>
+      <rect x="20" y="150" width="180" height="30" rx="5" fill="#161b22" stroke="#8b949e" stroke-width="1.5"/>
+      <text x="110" y="169" text-anchor="middle" fill="#8b949e" font-size="10" font-family="monospace" font-weight="600">find_restaurant</text>
+      <line x1="110" y1="180" x2="110" y2="198" stroke="#30363d" stroke-width="1.5" marker-end="url(#at)"/>
+      <rect x="20" y="198" width="180" height="30" rx="5" fill="#161b22" stroke="#4285F4" stroke-width="1.5"/>
+      <text x="110" y="216" text-anchor="middle" fill="#4285F4" font-size="9" font-family="monospace" font-weight="600">set_budget_item ×4</text>
+      <line x1="110" y1="228" x2="110" y2="246" stroke="#30363d" stroke-width="1.5" marker-end="url(#at)"/>
+      <rect x="20" y="246" width="180" height="34" rx="5" fill="#161b22" stroke="#EA4335" stroke-width="1.5"/>
+      <text x="110" y="260" text-anchor="middle" fill="#EA4335" font-size="9" font-family="monospace" font-weight="600">request_user_decision</text>
+      <text x="110" y="274" text-anchor="middle" fill="#8b949e" font-size="8" font-family="monospace">if total &gt; budget</text>
     </svg>`
   },
   shopping:{
@@ -583,53 +584,53 @@ function parseInput(s,txt){
 // ═══════════════════════════════════════════════════════════════
 const TOOLS_TRAVEL=[
   {name:'search_flights',
-   description:'Search available flights for the route. Call FIRST. After calling, use your own knowledge of this route to name specific airlines, flight numbers, departure/arrival times, and SGD prices. Reject overpriced options with reasons.',
+   description:'STEP 1. Search flights SIN → destination. Use your knowledge to evaluate 3 airlines on this route: name the airline, flight number, departure/arrival times, and SGD return price. Select the best-value option; reject the overpriced one with a reason. Then immediately call set_budget_item(category="flights").',
    parameters:{type:'OBJECT',properties:{
-     origin:{type:'STRING',description:'IATA code, e.g. SIN'},
-     destination:{type:'STRING',description:'IATA code or city name'},
+     origin:{type:'STRING'},destination:{type:'STRING'},
      depart_date:{type:'STRING'},return_date:{type:'STRING'}
    },required:['origin','destination','depart_date','return_date']}},
 
-  {name:'book_ground_transport',
-   description:'Book airport-to-city transfer. CRITICAL: Grab only operates in SEA (SG/MY/TH/ID/VN/PH). For all other destinations use local alternatives — Melbourne: Skybus+Uber; Tokyo: Narita/Haneda Express; Seoul: AREX; Taipei: MRT Airport Line; London: Heathrow Express; etc. Name the specific provider and quote SGD cost from your knowledge.',
-   parameters:{type:'OBJECT',properties:{
-     destination_city:{type:'STRING'},
-     provider:{type:'STRING',description:'Grab, Skybus, Narita Express, AREX, etc.'},
-     pickup_time:{type:'STRING'},
-     cost_local:{type:'STRING',description:'e.g. AUD 36'},
-     cost_sgd:{type:'NUMBER'}
-   },required:['destination_city','provider','pickup_time','cost_sgd']}},
-
-  {name:'find_restaurant',
-   description:'Find restaurant matching cuisine and dietary needs. Name 2 specific real restaurants in this city for the requested cuisine — one fine dining, one mid-range. Include approx price per person in SGD. Note: halal_required is a first-class constraint in SEA (MY ~60% Muslim, ID ~85%).',
+  {name:'book_hotel',
+   description:'STEP 2. Find accommodation. Name 2 specific real hotels in this city with approximate SGD price per night. Recommend one that fits the budget and number of nights. Then immediately call set_budget_item(category="hotel") with total_nights × price_per_night.',
    parameters:{type:'OBJECT',properties:{
      city:{type:'STRING'},
-     cuisine:{type:'STRING'},
-     halal_required:{type:'BOOLEAN'},
-     price_range:{type:'STRING',description:'budget/mid/fine'}
-   },required:['city','cuisine','halal_required']}},
+     check_in:{type:'STRING'},check_out:{type:'STRING'},
+     budget_per_night_sgd:{type:'NUMBER'},
+     style:{type:'STRING',description:'budget / mid-range / luxury'}
+   },required:['city','check_in','check_out']}},
+
+  {name:'book_ground_transport',
+   description:'STEP 3. Book airport ↔ city transfer. CRITICAL: Grab only operates in SEA (SG/MY/TH/ID/VN/PH). Outside SEA use local alternatives: Melbourne→Skybus+Uber; Tokyo→Narita/Haneda Express; Seoul→AREX; Taipei→Airport MRT; London→Heathrow Express; Paris→RER B; New York→AirTrain+Subway. Quote exact SGD cost per trip. Then call set_budget_item(category="transport") with 2×cost.',
+   parameters:{type:'OBJECT',properties:{
+     destination_city:{type:'STRING'},
+     provider:{type:'STRING'},
+     arrival_time:{type:'STRING'},
+     cost_per_trip_sgd:{type:'NUMBER'}
+   },required:['destination_city','provider','arrival_time','cost_per_trip_sgd']}},
+
+  {name:'find_restaurant',
+   description:'STEP 4. Find dinner restaurant. Name 2 specific real restaurants for the requested cuisine — one fine dining, one mid-range — with approximate SGD price per person. In SEA destinations proactively check halal certification. Then call set_budget_item(category="restaurant").',
+   parameters:{type:'OBJECT',properties:{
+     city:{type:'STRING'},cuisine:{type:'STRING'},
+     halal_required:{type:'BOOLEAN'},party_size:{type:'NUMBER'},
+     preferred_time:{type:'STRING'}
+   },required:['city','cuisine','halal_required','party_size','preferred_time']}},
 
   {name:'set_budget_item',
-   description:'Update the budget tracker UI. Call after each booking to record its SGD cost.',
+   description:'Update budget tracker. Call immediately after each of search_flights / book_hotel / book_ground_transport / find_restaurant. Do NOT skip this step.',
    parameters:{type:'OBJECT',properties:{
      category:{type:'STRING',description:'flights | hotel | transport | restaurant'},
-     amount_sgd:{type:'NUMBER'},
-     label:{type:'STRING',description:'brief description, e.g. Scoot TR 13 return'}
+     amount_sgd:{type:'NUMBER',description:'total SGD for this category'},
+     label:{type:'STRING',description:'e.g. "Scoot TR 13 return" or "Hotel Lindrum 2 nights"'}
    },required:['category','amount_sgd','label']}},
 
   {name:'request_user_decision',
-   description:'Surface a budget conflict and pause for human input. Call when you detect total > budget. Provide two CONCRETE trade-off options with specific savings amounts.',
+   description:'FINAL STEP — only if total budget items exceed user budget. Surface the conflict and offer exactly two concrete options with specific names and SGD savings.',
    parameters:{type:'OBJECT',properties:{
-     conflict_summary:{type:'STRING',description:'1-sentence description of the conflict'},
-     total_sgd:{type:'NUMBER'},
-     budget_sgd:{type:'NUMBER'},
-     overage_sgd:{type:'NUMBER'},
-     option_a_title:{type:'STRING'},
-     option_a_detail:{type:'STRING',description:'specific change — name the flight/restaurant'},
-     option_a_saves_sgd:{type:'NUMBER'},
-     option_b_title:{type:'STRING'},
-     option_b_detail:{type:'STRING'},
-     option_b_saves_sgd:{type:'NUMBER'}
+     conflict_summary:{type:'STRING'},
+     total_sgd:{type:'NUMBER'},budget_sgd:{type:'NUMBER'},overage_sgd:{type:'NUMBER'},
+     option_a_title:{type:'STRING'},option_a_detail:{type:'STRING'},option_a_saves_sgd:{type:'NUMBER'},
+     option_b_title:{type:'STRING'},option_b_detail:{type:'STRING'},option_b_saves_sgd:{type:'NUMBER'}
    },required:['conflict_summary','total_sgd','overage_sgd','option_a_title','option_a_detail','option_b_title','option_b_detail']}}
 ];
 const TOOLS_SHOPPING=[
@@ -651,19 +652,21 @@ const TOOLS_FOOD=[
 function buildPrompt(s,p){
   if(s==='travel'){
     const rawInput=$('userInput')?$('userInput').value.trim():'';
-    return `You are a travel orchestration agent helping plan a trip from Singapore to any destination worldwide.
+    return `You are a travel orchestration agent. Plan a trip from Singapore based on the user's request.
 
 USER REQUEST: "${rawInput}"
-USER BUDGET: SGD ${p.budget}
+BUDGET: SGD ${p.budget}
 
-TOOL WORKFLOW — call in this order:
-1. search_flights(origin, destination, dates) — use your knowledge of this route to name real airlines, flight numbers, realistic SGD prices. Pick the best value option. Reject overpriced ones with a reason.
-2. book_ground_transport — CRITICAL: Grab only operates in SEA (SG/MY/TH/ID/VN/PH). For destinations outside SEA, name the correct local transport (Melbourne → Skybus; Tokyo → Narita/Haneda Express; Seoul → AREX; Taipei → Airport MRT; London → Heathrow Express; Paris → RER B; New York → AirTrain+Subway; etc.) with real SGD costs.
-3. find_restaurant — name 2 specific real restaurants for the requested cuisine in this city. For SEA destinations with Muslim-majority populations, proactively flag halal options.
-4. set_budget_item — call once per cost category (flights, hotel, transport, restaurant) with the SGD amount. Include an estimated hotel cost based on your knowledge of the destination.
-5. If sum of all set_budget_item calls > SGD ${p.budget}: call request_user_decision with two specific, actionable trade-off options (name the exact alternative flight/restaurant and the SGD saving).
+MANDATORY TOOL SEQUENCE — you must call every tool in this exact order. Do NOT summarise the plan in text instead of calling tools.
 
-REASONING STYLE: Before each tool call, write 2-3 sentences explaining your chain of thought — why this tool now, what specific options you're evaluating, what you're ruling out.`;
+Step 1 → search_flights: name 3 airlines on this route with real flight numbers and SGD prices. Pick best value; reject overpriced one.
+Step 2 → book_hotel: name 2 real hotels in this city with SGD/night prices. Recommend one; factor in number of nights from the user request.
+Step 3 → book_ground_transport: Grab only works in SEA (SG/MY/TH/ID/VN/PH). Outside SEA, name the correct local option (Skybus, AREX, Narita Express, Heathrow Express, etc.) with real SGD cost.
+Step 4 → find_restaurant: name 2 real restaurants for the cuisine requested. Note halal certification for SEA Muslim-majority destinations.
+After EACH of steps 1-4 → immediately call set_budget_item with the SGD cost.
+Final step → add up all set_budget_item values. If total > SGD ${p.budget}: call request_user_decision with two specific trade-offs (name the exact alternative + SGD saving).
+
+Write 1-2 sentences of reasoning before each tool call explaining your choice.`;
   }
   if(s==='shopping'){
     const pr=PRODUCTS[p.product]||PRODUCTS.headphones;
@@ -938,9 +941,11 @@ function resetBudget(){budgetVals=[0,0,0,0];[0,1,2,3].forEach(i=>setBudget(i,0))
 // CARD / TRACE HELPERS
 // ═══════════════════════════════════════════════════════════════
 const TOOL_STYLE={
-  search_flights:{cls:'flight',badge:'b-blue',lbl:'AirAsia / Scoot / Jetstar'},
-  book_ground_transport:{cls:'transport',badge:'b-green',lbl:'Grab'},
-  find_restaurant:{cls:'restaurant',badge:'b-yellow',lbl:'Restaurant API'},
+  search_flights:{cls:'flight',badge:'b-blue',lbl:'Flights'},
+  book_hotel:{cls:'transport',badge:'b-green',lbl:'Hotel'},
+  book_ground_transport:{cls:'restaurant',badge:'b-yellow',lbl:'Ground Transport'},
+  find_restaurant:{cls:'fx',badge:'b-red',lbl:'Restaurant'},
+  set_budget_item:{cls:'flight',badge:'b-blue',lbl:'Budget Tracker'},
   get_fx_rate:{cls:'fx',badge:'b-red',lbl:'FX + Budget'},
   search_products:{cls:'shopping',badge:'b-blue',lbl:'Shopee / Lazada'},
   compare_prices:{cls:'compare',badge:'b-green',lbl:'Price Compare'},
@@ -1202,12 +1207,19 @@ async function runAPI(){
     const frs=[];
     let pauseForDecision=false;
     for(const fc of fcs){
-      // ── set_budget_item: silent UI update, no card ──────────────
+      // ── set_budget_item: update budget bar + show small indicator ─
       if(fc.name==='set_budget_item'){
         const catIdx={flights:0,hotel:1,transport:2,restaurant:3};
-        const idx=catIdx[fc.args.category]??-1;
+        const idx=catIdx[(fc.args.category||'').toLowerCase()]??-1;
         if(idx>=0) setBudget(idx,fc.args.amount_sgd||0);
-        frs.push({functionResponse:{name:fc.name,response:{status:'budget_updated'}}});
+        // tiny non-intrusive indicator in timeline
+        const tl=$('timeline');
+        if(tl.querySelector('.empty')) tl.innerHTML='';
+        const pill=document.createElement('div');
+        pill.style.cssText='display:flex;justify-content:space-between;padding:4px 10px;background:#161b22;border:1px solid #30363d;border-radius:4px;font-size:11px;color:#8b949e;margin-bottom:4px';
+        pill.innerHTML=`<span>💰 set_budget_item · ${fc.args.category}</span><span style="color:var(--green)">SGD ${(fc.args.amount_sgd||0).toFixed(0)} — ${fc.args.label||''}</span>`;
+        tl.appendChild(pill); tl.scrollTop=tl.scrollHeight;
+        frs.push({functionResponse:{name:fc.name,response:{status:'budget_updated',running_total_sgd:budgetVals.reduce((a,b)=>a+b,0)}}});
         loops++;
         continue;
       }
