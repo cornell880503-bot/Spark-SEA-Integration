@@ -582,10 +582,55 @@ function parseInput(s,txt){
 // TOOL DECLARATIONS (per scenario)
 // ═══════════════════════════════════════════════════════════════
 const TOOLS_TRAVEL=[
-  {name:'search_flights',description:'Search flights. CALL FIRST — arrival time drives all downstream tools.',parameters:{type:'OBJECT',properties:{origin:{type:'STRING'},destination:{type:'STRING'},depart_date:{type:'STRING'},return_date:{type:'STRING'},max_price_sgd:{type:'NUMBER'}},required:['origin','destination','depart_date','return_date']}},
-  {name:'book_ground_transport',description:'Book Grab airport transfer. Call AFTER search_flights — pickup_time = flight arrival.',parameters:{type:'OBJECT',properties:{provider:{type:'STRING'},pickup_location:{type:'STRING'},pickup_time:{type:'STRING'},dropoff:{type:'STRING'}},required:['pickup_location','pickup_time','dropoff']}},
-  {name:'find_restaurant',description:'Find restaurant. halal_required is a first-class SEA parameter (~60% Muslim in Malaysia).',parameters:{type:'OBJECT',properties:{city:{type:'STRING'},cuisine:{type:'STRING'},party_size:{type:'NUMBER'},preferred_time:{type:'STRING'},halal_required:{type:'BOOLEAN'}},required:['city','cuisine','party_size','preferred_time','halal_required']}},
-  {name:'get_fx_rate',description:'Get SGD exchange rate and check total against budget. CALL LAST.',parameters:{type:'OBJECT',properties:{from_ccy:{type:'STRING'},to_ccy:{type:'STRING'},total_amount_sgd:{type:'NUMBER'}},required:['from_ccy','to_ccy','total_amount_sgd']}}
+  {name:'search_flights',
+   description:'Search available flights for the route. Call FIRST. After calling, use your own knowledge of this route to name specific airlines, flight numbers, departure/arrival times, and SGD prices. Reject overpriced options with reasons.',
+   parameters:{type:'OBJECT',properties:{
+     origin:{type:'STRING',description:'IATA code, e.g. SIN'},
+     destination:{type:'STRING',description:'IATA code or city name'},
+     depart_date:{type:'STRING'},return_date:{type:'STRING'}
+   },required:['origin','destination','depart_date','return_date']}},
+
+  {name:'book_ground_transport',
+   description:'Book airport-to-city transfer. CRITICAL: Grab only operates in SEA (SG/MY/TH/ID/VN/PH). For all other destinations use local alternatives — Melbourne: Skybus+Uber; Tokyo: Narita/Haneda Express; Seoul: AREX; Taipei: MRT Airport Line; London: Heathrow Express; etc. Name the specific provider and quote SGD cost from your knowledge.',
+   parameters:{type:'OBJECT',properties:{
+     destination_city:{type:'STRING'},
+     provider:{type:'STRING',description:'Grab, Skybus, Narita Express, AREX, etc.'},
+     pickup_time:{type:'STRING'},
+     cost_local:{type:'STRING',description:'e.g. AUD 36'},
+     cost_sgd:{type:'NUMBER'}
+   },required:['destination_city','provider','pickup_time','cost_sgd']}},
+
+  {name:'find_restaurant',
+   description:'Find restaurant matching cuisine and dietary needs. Name 2 specific real restaurants in this city for the requested cuisine — one fine dining, one mid-range. Include approx price per person in SGD. Note: halal_required is a first-class constraint in SEA (MY ~60% Muslim, ID ~85%).',
+   parameters:{type:'OBJECT',properties:{
+     city:{type:'STRING'},
+     cuisine:{type:'STRING'},
+     halal_required:{type:'BOOLEAN'},
+     price_range:{type:'STRING',description:'budget/mid/fine'}
+   },required:['city','cuisine','halal_required']}},
+
+  {name:'set_budget_item',
+   description:'Update the budget tracker UI. Call after each booking to record its SGD cost.',
+   parameters:{type:'OBJECT',properties:{
+     category:{type:'STRING',description:'flights | hotel | transport | restaurant'},
+     amount_sgd:{type:'NUMBER'},
+     label:{type:'STRING',description:'brief description, e.g. Scoot TR 13 return'}
+   },required:['category','amount_sgd','label']}},
+
+  {name:'request_user_decision',
+   description:'Surface a budget conflict and pause for human input. Call when you detect total > budget. Provide two CONCRETE trade-off options with specific savings amounts.',
+   parameters:{type:'OBJECT',properties:{
+     conflict_summary:{type:'STRING',description:'1-sentence description of the conflict'},
+     total_sgd:{type:'NUMBER'},
+     budget_sgd:{type:'NUMBER'},
+     overage_sgd:{type:'NUMBER'},
+     option_a_title:{type:'STRING'},
+     option_a_detail:{type:'STRING',description:'specific change — name the flight/restaurant'},
+     option_a_saves_sgd:{type:'NUMBER'},
+     option_b_title:{type:'STRING'},
+     option_b_detail:{type:'STRING'},
+     option_b_saves_sgd:{type:'NUMBER'}
+   },required:['conflict_summary','total_sgd','overage_sgd','option_a_title','option_a_detail','option_b_title','option_b_detail']}}
 ];
 const TOOLS_SHOPPING=[
   {name:'search_products',description:'Search for product across SEA marketplaces (Shopee SG/MY/TH, Lazada). Returns listings from multiple countries.',parameters:{type:'OBJECT',properties:{product_name:{type:'STRING'},marketplaces:{type:'STRING',description:'comma-separated list'},max_budget_sgd:{type:'NUMBER'}},required:['product_name']}},
@@ -605,34 +650,20 @@ const TOOLS_FOOD=[
 // ═══════════════════════════════════════════════════════════════
 function buildPrompt(s,p){
   if(s==='travel'){
-    const c=resolveCityData(p);
-    const rec=c.airlines[0],alt=c.airlines[1],rej=c.airlines[2];
-    const cuisine=p.cuisine||'_default';
-    const rests=c.rests[cuisine]||c.rests._default||Object.values(c.rests)[0];
-    const r0sgd=rests[0].basePrice_sgd||Math.round(rests[0].local/c.fx);
-    const r1sgd=rests[1].basePrice_sgd||Math.round(rests[1].local/c.fx);
-    const transNote=c.grabAvail
-      ? `Grab super-app: ${c.ccy} ${c.grab_local} = SGD ${c.grab_sgd.toFixed(2)} each way`
-      : `⚠ Grab does NOT operate in ${c.name}. Use ${c.transName} instead: ${c.ccy} ${c.grab_local} ≈ SGD ${c.grab_sgd.toFixed(2)} each way`;
-    const total=Math.round(rec.sgd+c.hotel+c.grab_sgd*2+r0sgd);
-    const overage=total-p.budget;
-    const overBudget=total>p.budget;
-    return `You are a multi-destination travel orchestration agent. You can plan trips from Singapore to ANY city worldwide.
-TOOL ORDER: search_flights FIRST → book_ground_transport + find_restaurant (both depend on flight arrival time) → get_fx_rate LAST.
-For each tool call: write 2-3 sentences of genuine reasoning — WHY this tool now, what alternatives you considered and rejected, any destination-specific context (transport availability, cuisine, FX nuances).
-KEY CONTEXT for ${c.name}:
-- ${c.grabAvail?'Grab super-app available':'Grab NOT available here — '+c.transName+' is the local equivalent'}
-- Local currency: ${c.ccy} (1 SGD ≈ ${c.fx} ${c.ccy}), flight time ~${c.dur}
-- Cuisine requested: ${cuisine==='_default'?'not specified — use local recommendations':cuisine}
-MOCK TOOL RESPONSES (tools will return these values):
-- search_flights: ${rec.name} ${rec.no} ${rec.dep}→${rec.arr} SGD ${rec.sgd} [RECOMMEND], ${alt.name} ${alt.no} ${alt.dep}→${alt.arr} SGD ${alt.sgd} [budget alt], ${rej.name} SGD ${rej.sgd} [REJECT — overpriced]
-- book_ground_transport: ${transNote}, 2 trips = SGD ${r2(c.grab_sgd*2).toFixed(2)}
-- find_restaurant: ${rests[0].name} (${rests[0].type}) SGD ${r0sgd}/pax, ${rests[1].name} SGD ${r1sgd}/pax
-- Hotel estimate SGD ${c.hotel}/night (include in total)
-- get_fx_rate: 1 SGD = ${c.fx} ${c.ccy}, total SGD ${total}, over_budget=${overBudget}${overBudget?', overage=SGD '+overage:''}
-${overBudget?`BUDGET CONFLICT: When get_fx_rate returns over_budget=true, STOP and surface trade-offs:
-Option A: Switch to ${alt.name} ${alt.no} (${alt.dep}→${alt.arr}) — saves SGD ${rec.sgd-alt.sgd}, later arrival shifts dinner from 19:00 → 20:30
-Option B: Downgrade dinner from ${rests[0].name} to ${rests[1].name} — saves SGD ${r0sgd-r1sgd}, flight unchanged`:'If total is under budget, confirm the full plan and summarise clearly.'}`;
+    const rawInput=$('userInput')?$('userInput').value.trim():'';
+    return `You are a travel orchestration agent helping plan a trip from Singapore to any destination worldwide.
+
+USER REQUEST: "${rawInput}"
+USER BUDGET: SGD ${p.budget}
+
+TOOL WORKFLOW — call in this order:
+1. search_flights(origin, destination, dates) — use your knowledge of this route to name real airlines, flight numbers, realistic SGD prices. Pick the best value option. Reject overpriced ones with a reason.
+2. book_ground_transport — CRITICAL: Grab only operates in SEA (SG/MY/TH/ID/VN/PH). For destinations outside SEA, name the correct local transport (Melbourne → Skybus; Tokyo → Narita/Haneda Express; Seoul → AREX; Taipei → Airport MRT; London → Heathrow Express; Paris → RER B; New York → AirTrain+Subway; etc.) with real SGD costs.
+3. find_restaurant — name 2 specific real restaurants for the requested cuisine in this city. For SEA destinations with Muslim-majority populations, proactively flag halal options.
+4. set_budget_item — call once per cost category (flights, hotel, transport, restaurant) with the SGD amount. Include an estimated hotel cost based on your knowledge of the destination.
+5. If sum of all set_budget_item calls > SGD ${p.budget}: call request_user_decision with two specific, actionable trade-off options (name the exact alternative flight/restaurant and the SGD saving).
+
+REASONING STYLE: Before each tool call, write 2-3 sentences explaining your chain of thought — why this tool now, what specific options you're evaluating, what you're ruling out.`;
   }
   if(s==='shopping'){
     const pr=PRODUCTS[p.product]||PRODUCTS.headphones;
@@ -1169,34 +1200,78 @@ async function runAPI(){
       return;
     }
     const frs=[];
+    let pauseForDecision=false;
     for(const fc of fcs){
-      const card=makeCard(fc.name,fc.args,false);
-      await sleep(750);
-      const mock=generateMock(scene,fc.name,fc.args,currentParsed);
-      if(fc.name==='search_flights'){mock.sel=0;}
-      if(fc.name==='find_restaurant') mock.fx=resolveCityData(currentParsed).fx;
-      setDone(card);showResult(card,fc.name,mock);
-      lastMockResult=mock;
-      // budget updates
-      if(scene==='travel'){
-        const cd=resolveCityData(currentParsed);
-        if(fc.name==='search_flights') setBudget(0,cd.airlines[0].sgd);
-        if(fc.name==='book_ground_transport'){setBudget(1,cd.hotel);setBudget(2,r2(cd.grab_sgd*2));}
-        if(fc.name==='find_restaurant'){const rr=cd.rests[currentParsed.cuisine]||cd.rests._default||Object.values(cd.rests)[0];setBudget(3,rr[0].basePrice_sgd||Math.round(rr[0].local/cd.fx));}
-        if(fc.name==='get_fx_rate'&&mock.over_budget){$('overAlert').classList.add('on');$('overAmt').textContent=Math.round(mock.overage||44);}
-      } else if(scene==='shopping'){
-        if(fc.name==='search_products'){const pr=PRODUCTS[currentParsed.product]||PRODUCTS.headphones;setBudget(0,pr.listings[1].price_sgd);}
-        if(fc.name==='compare_prices'){const pr=PRODUCTS[currentParsed.product]||PRODUCTS.headphones;setBudget(1,pr.listings[1].ship_sgd);}
-        if(fc.name==='calculate_duties'){const pr=PRODUCTS[currentParsed.product]||PRODUCTS.headphones;setBudget(2,pr.listings[1].duties_sgd);}
-        if(fc.name==='checkout'&&mock.over_budget){$('overAlert').classList.add('on');$('overAmt').textContent=Math.round(mock.overage||20);}
-      } else {
-        if(fc.name==='get_menu'){const h=currentParsed.headcount||6;const c=FOOD_REST[0];setBudget(0,c.pax*h);setBudget(1,c.delivery);setBudget(2,Math.round(c.pax*h*.1));}
-        if(fc.name==='place_order'&&mock.over_budget_per_pax){$('overAlert').classList.add('on');$('overAmt').textContent=Math.round((mock.overage_per_pax||3)*(currentParsed.headcount||6));}
+      // ── set_budget_item: silent UI update, no card ──────────────
+      if(fc.name==='set_budget_item'){
+        const catIdx={flights:0,hotel:1,transport:2,restaurant:3};
+        const idx=catIdx[fc.args.category]??-1;
+        if(idx>=0) setBudget(idx,fc.args.amount_sgd||0);
+        frs.push({functionResponse:{name:fc.name,response:{status:'budget_updated'}}});
+        loops++;
+        continue;
       }
-      frs.push({functionResponse:{name:fc.name,response:mock}});
+      // ── request_user_decision: Gemini-authored conflict modal ───
+      if(fc.name==='request_user_decision'){
+        const a=fc.args;
+        $('overAlert').classList.add('on');
+        $('overAmt').textContent=Math.round(a.overage_sgd||0);
+        $('modalContent').innerHTML=`
+          <div class="modal-title">⚠ Budget Conflict — Human Decision Required</div>
+          <div class="modal-sub">${a.conflict_summary||''}<br>Total <strong style="color:var(--red)">SGD ${Math.round(a.total_sgd||0)}</strong> · Budget <strong>SGD ${Math.round(a.budget_sgd||currentParsed.budget||0)}</strong> · Over by <strong style="color:var(--red)">SGD ${Math.round(a.overage_sgd||0)}</strong></div>
+          <div class="to-opts">
+            <button class="to-btn" onclick="pick('A')">
+              <div class="to-lbl">Option A</div>
+              <div class="to-title">${a.option_a_title||''}</div>
+              <div class="to-detail">${a.option_a_detail||''}</div>
+              ${a.option_a_saves_sgd?`<div class="to-save">Saves SGD ${Math.round(a.option_a_saves_sgd)} ✓</div>`:''}
+            </button>
+            <button class="to-btn" onclick="pick('B')">
+              <div class="to-lbl">Option B</div>
+              <div class="to-title">${a.option_b_title||''}</div>
+              <div class="to-detail">${a.option_b_detail||''}</div>
+              ${a.option_b_saves_sgd?`<div class="to-save">Saves SGD ${Math.round(a.option_b_saves_sgd)} ✓</div>`:''}
+            </button>
+          </div>`;
+        frs.push({functionResponse:{name:fc.name,response:{status:'surfaced_to_user'}}});
+        pauseForDecision=true;
+        loops++;
+        break; // stop processing more tool calls this round
+      }
+      // ── all other tools: minimal stub, Gemini fills content ────
+      const card=makeCard(fc.name,fc.args,false);
+      await sleep(650);
+      let stub={status:'acknowledged',message:'Tool executed — see reasoning trace for analysis'};
+      // Shopping and Food still use structured mocks (those aren't the problem)
+      if(scene!=='travel') stub=generateMock(scene,fc.name,fc.args,currentParsed);
+      // For travel: shopping/food, budget bar updates come from set_budget_item instead
+      if(scene==='shopping'){
+        const pr=PRODUCTS[currentParsed.product]||PRODUCTS.headphones;
+        if(fc.name==='search_products') setBudget(0,pr.listings[1].price_sgd);
+        if(fc.name==='compare_prices') setBudget(1,pr.listings[1].ship_sgd);
+        if(fc.name==='calculate_duties') setBudget(2,pr.listings[1].duties_sgd);
+        if(fc.name==='checkout'&&stub.over_budget){$('overAlert').classList.add('on');$('overAmt').textContent=Math.round(stub.overage||20);}
+      } else if(scene==='food'){
+        if(fc.name==='get_menu'){const h=currentParsed.headcount||6;const c=FOOD_REST[0];setBudget(0,c.pax*h);setBudget(1,c.delivery);setBudget(2,Math.round(c.pax*h*.1));}
+        if(fc.name==='place_order'&&stub.over_budget_per_pax){$('overAlert').classList.add('on');$('overAmt').textContent=Math.round((stub.overage_per_pax||3)*(currentParsed.headcount||6));}
+      }
+      setDone(card);
+      if(scene!=='travel') showResult(card,fc.name,stub);
+      else{
+        // Travel live mode: don't show mock table — Gemini's text IS the result
+        const el=card.querySelector('.tresult');
+        el.classList.add('on');
+        el.innerHTML='<div style="color:var(--muted);font-size:11px;font-style:italic">Gemini analysis in Reasoning Trace →</div>';
+      }
+      lastMockResult=stub;
+      frs.push({functionResponse:{name:fc.name,response:stub}});
       loops++;
     }
-    if($('overAlert').classList.contains('on')){
+    if(pauseForDecision){
+      history.push({role:'user',parts:frs});
+      await sleep(400);$('overlay').classList.add('on');setStatus('Awaiting user decision…');return;
+    }
+    if(scene!=='travel'&&$('overAlert').classList.contains('on')){
       history.push({role:'user',parts:frs});
       $('modalContent').innerHTML=buildModal(scene,currentParsed,lastMockResult||{});
       await sleep(500);$('overlay').classList.add('on');setStatus('Awaiting user decision…');return;
