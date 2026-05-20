@@ -999,20 +999,28 @@ async function runAPI(){
     try{resp=await callGemini(history);}
     catch(err){
       const msg=err.message||String(err);
-      // Surface API errors clearly — don't silently fall back
-      $('traceWrap').innerHTML+= `<div class="trace-entry" style="border-color:var(--red)">
-        <div class="trace-step" style="color:var(--red)">⚠ GEMINI API ERROR</div>
-        <div class="trace-txt conf">${msg}</div>
-        <div style="margin-top:6px;font-size:11px;color:var(--muted);font-family:sans-serif">
-          ${msg.includes('API_KEY_INVALID')||msg.includes('invalid')?'→ Check your Gemini API key.':''}
-          ${msg.includes('PERMISSION_DENIED')||msg.includes('403')?'→ Key may lack Generative Language API access. Enable it at console.cloud.google.com.':''}
-          ${msg.includes('quota')||msg.includes('429')?'→ Rate limit hit. Wait a moment and retry.':''}
-          Falling back to scripted demo.
-        </div>
+      console.error('[Spark SEA] Gemini API error:', msg, err);
+      let hint='';
+      if(msg.includes('API_KEY_INVALID')||msg.toLowerCase().includes('invalid')||msg.includes('400'))
+        hint='→ API key invalid. Make sure you copied the full key from Google AI Studio.';
+      else if(msg.includes('PERMISSION_DENIED')||msg.includes('403'))
+        hint='→ Key missing permission. Enable "Generative Language API" at console.cloud.google.com → APIs & Services.';
+      else if(msg.includes('quota')||msg.includes('429')||msg.includes('RESOURCE_EXHAUSTED'))
+        hint='→ Rate limit hit. Wait ~30s and retry.';
+      else if(msg.includes('404')||msg.includes('not found'))
+        hint='→ Model not found. Both gemini-2.5-flash and gemini-2.0-flash failed.';
+      // Stop — don't auto-fallback; let the user decide
+      $('traceWrap').innerHTML += `<div class="trace-entry" style="border:1px solid var(--red);margin-top:6px">
+        <div class="trace-step" style="color:var(--red);font-size:11px">⚠ GEMINI API ERROR — STOPPED</div>
+        <div class="trace-txt conf" style="margin:5px 0;font-size:12px">${msg}</div>
+        ${hint?`<div style="color:var(--yellow);font-size:11px;margin-bottom:8px">${hint}</div>`:''}
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Check the browser console (F12) for full details.</div>
+        <button onclick="fallbackToDemo()" style="padding:5px 12px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;cursor:pointer">Run scripted demo instead</button>
       </div>`;
       $('traceWrap').scrollTop=99999;
-      demoMode=true;$('demoBtn').classList.add('on');$('demoLbl').textContent='Demo Mode ON';$('modelLbl').textContent='API error → Demo';
-      await runDemo(); return;
+      setStatus('⚠ API error — see Reasoning Trace for details');
+      $('modelLbl').textContent='API error';
+      $('runBtn').disabled=false; running=false; return;
     }
     const parts=resp.candidates?.[0]?.content?.parts||[];
     history.push({role:'model',parts});
@@ -1187,6 +1195,18 @@ async function pick(choice){
   const key=$('apiKey').value.trim();
   if(demoMode||!key) await runReplanDemo(choice);
   else await runReplanAPI(choice);
+}
+
+async function fallbackToDemo(){
+  demoMode=true;
+  $('demoBtn').classList.add('on');
+  $('demoLbl').textContent='Demo Mode ON';
+  $('modelLbl').textContent='Scripted demo';
+  // Remove the error card then start fresh
+  $('timeline').innerHTML='';
+  $('traceWrap').innerHTML='';
+  running=false;
+  await startOrchestration();
 }
 
 function onKeyInput(){
