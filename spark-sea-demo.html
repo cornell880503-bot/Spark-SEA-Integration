@@ -122,6 +122,7 @@ textarea{background:transparent;border:none;color:var(--text);font-size:12px;lin
 .trace-txt.dec{color:var(--yellow);}
 .trace-txt.conf{color:var(--red);}
 .trace-txt.mem{color:#89cff0;}
+.trace-txt.parse{color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;line-height:1.8;}
 .sbar{padding:5px 18px;background:var(--bg-card);border-top:1px solid var(--border);font-size:11px;color:var(--muted);display:flex;justify-content:space-between;flex-shrink:0;}
 .empty{text-align:center;padding:36px 16px;color:var(--muted);font-size:12px;}
 .empty-icon{font-size:28px;margin-bottom:10px;opacity:.4;}
@@ -404,15 +405,45 @@ const SCENE_CFG = {
 // ═══════════════════════════════════════════════════════════════
 function parseTravel(txt){
   const lower = txt.toLowerCase();
-  const destMap={'吉隆坡':'KUL','kuala lumpur':'KUL',' kl ':'KUL','kul':'KUL','曼谷':'BKK','bangkok':'BKK','bkk':'BKK','雅加達':'CGK','jakarta':'CGK','cgk':'CGK','胡志明':'SGN','ho chi minh':'SGN','hcmc':'SGN','saigon':'SGN','峇里':'DPS','bali':'DPS','dps':'DPS'};
-  let dest='KUL';
-  for(const [k,v] of Object.entries(destMap)) if(lower.includes(k)) {dest=v;break;}
+  // SEA destinations only — non-SEA entries map to '_OOS' (out of scope)
+  const destMap={
+    '吉隆坡':'KUL','kuala lumpur':'KUL',' kl ':'KUL','kul':'KUL',
+    '曼谷':'BKK','bangkok':'BKK','bkk':'BKK',
+    '雅加達':'CGK','jakarta':'CGK','cgk':'CGK','印尼':'CGK',
+    '胡志明':'SGN','ho chi minh':'SGN','hcmc':'SGN','saigon':'SGN','越南':'SGN',
+    '峇里':'DPS','bali':'DPS','dps':'DPS',
+    // Out-of-scope: flag, then fallback
+    '墨爾本':'_OOS','melbourne':'_OOS','雪梨':'_OOS','sydney':'_OOS',
+    '倫敦':'_OOS','london':'_OOS','紐約':'_OOS','new york':'_OOS',
+    '東京':'_OOS','tokyo':'_OOS','首爾':'_OOS','seoul':'_OOS',
+    '台北':'_OOS','taipei':'_OOS','香港':'_OOS','hong kong':'_OOS',
+    '北京':'_OOS','beijing':'_OOS','上海':'_OOS','shanghai':'_OOS',
+  };
+  let dest='KUL', destFound=false, destRaw='', isOOS=false;
+  for(const [k,v] of Object.entries(destMap)){
+    if(lower.includes(k)){
+      destFound=true; destRaw=k; isOOS=(v==='_OOS');
+      dest=isOOS?'KUL':v; break;
+    }
+  }
   const bm=txt.match(/(?:SGD|S\$)\s*(\d+)/i)||txt.match(/(\d+)\s*(?:SGD|S\$)/i)||txt.match(/預算[^\d]*(\d+)/);
   const budget=bm?parseInt(bm[1]):600;
-  const cuisineMap={'中菜':'Chinese','中餐':'Chinese','chinese':'Chinese','malay':'Malay','馬來':'Malay'};
-  let cuisine='Chinese';
-  for(const [k,v] of Object.entries(cuisineMap)) if(lower.includes(k)){cuisine=v;break;}
-  return {dest,budget,cuisine};
+  // Cuisine map — unsupported types fall back to Chinese with warning
+  const cuisineMap={
+    '中菜':'Chinese','中餐':'Chinese','chinese':'Chinese','廣東':'Chinese','粵菜':'Chinese','dim sum':'Chinese','點心':'Chinese',
+    'malay':'Malay','馬來':'Malay','nasi':'Malay',
+    '義大利':'_Italian','italian':'_Italian','意大利':'_Italian','pizza':'_Italian','pasta':'_Italian',
+    '日本':'_Japanese','japanese':'_Japanese','壽司':'_Japanese','sushi':'_Japanese','ramen':'_Japanese',
+    '印度':'_Indian','indian':'_Indian','curry':'_Indian','咖哩':'_Indian',
+  };
+  let cuisine='Chinese', cuisineFound=false, cuisineRaw='', cuisineUnsupported=false;
+  for(const [k,v] of Object.entries(cuisineMap)){
+    if(lower.includes(k)){
+      cuisineFound=true; cuisineRaw=k; cuisineUnsupported=v.startsWith('_');
+      cuisine=cuisineUnsupported?'Chinese':v; break;
+    }
+  }
+  return {dest,budget,cuisine,destFound,destRaw,isOOS,cuisineFound,cuisineRaw,cuisineUnsupported};
 }
 
 function parseShopping(txt){
@@ -827,7 +858,12 @@ function addTrace(step,text,type){
   const e=document.createElement('div');
   e.className='trace-entry';
   const cls=type==='dec'?'dec':type==='conf'?'conf':type==='mem'?'mem':'';
-  e.innerHTML=`<div class="trace-step">${step}</div><div class="trace-txt ${cls}">${text}</div>`;
+  // Mark demo-mode reasoning as scripted so it's honest; system events (conf/dec/mem/parse) stay unlabelled
+  const isScripted = demoMode && !type && !step.startsWith('INPUT') && !step.startsWith('INIT');
+  const stepHtml = isScripted
+    ? `${step} <span style="color:#484f58;font-size:9px;font-family:sans-serif;font-style:italic">[scripted simulation]</span>`
+    : step;
+  e.innerHTML=`<div class="trace-step">${stepHtml}</div><div class="trace-txt ${cls}">${text}</div>`;
   w.appendChild(e); w.scrollTop=w.scrollHeight;
 }
 
@@ -1071,11 +1107,44 @@ async function startOrchestration(){
   $('timeline').innerHTML='';$('traceWrap').innerHTML='';
   $('overAlert').classList.remove('on');$('overlay').classList.remove('on');
   resetBudget();
-  if(scene==='travel') setBudget(1,(CITIES[currentParsed.dest]||CITIES.KUL).hotel); // pre-estimate hotel
+  if(scene==='travel') setBudget(1,(CITIES[currentParsed.dest]||CITIES.KUL).hotel);
   $('runBtn').disabled=true;
+
+  // ── Input parse summary ─────────────────────────────────────────
   const key=$('apiKey').value.trim();
+  const modeLabel=(!demoMode&&key)?'🤖 GEMINI LIVE':'⚡ SCRIPTED SIMULATION — reasoning below is pre-written, not model-generated. Enter API key for real Gemini inference.';
+  if(scene==='travel'){
+    const p=currentParsed;
+    const city=CITIES[p.dest]||CITIES.KUL;
+    const warns=[];
+    if(p.isOOS) warns.push(`⚠ <strong style="color:var(--red)">'${p.destRaw}' is not a SEA destination</strong> — this demo covers KUL · BKK · CGK · SGN · DPS. Falling back to <strong>KUL (Kuala Lumpur)</strong>.`);
+    else if(!p.destFound) warns.push(`ℹ No destination detected → defaulting to <strong>KUL</strong>.`);
+    if(p.cuisineUnsupported) warns.push(`⚠ <strong>'${p.cuisineRaw}'</strong> cuisine not in SEA restaurant DB → substituting <strong>Chinese</strong> restaurants.`);
+    const summary=[
+      `<strong>Destination:</strong> ${city.name} (${p.dest})${p.isOOS?' <span style="color:var(--red)">[⚠ OOS fallback]</span>':p.destFound?' <span style="color:var(--green)">✓</span>':' <span style="color:var(--muted)">[default]</span>'}`,
+      `<strong>Cuisine:</strong> ${p.cuisine}${p.cuisineUnsupported?' <span style="color:var(--red)">[⚠ unsupported, substituted]</span>':p.cuisineFound?' <span style="color:var(--green)">✓</span>':' <span style="color:var(--muted)">[default]</span>'}`,
+      `<strong>Budget:</strong> SGD ${p.budget}`,
+      `<strong>Mode:</strong> ${modeLabel}`,
+      ...(warns.length?['<br>'+warns.join('<br>')]:[''])
+    ].join('<br>');
+    addTrace('INPUT PARSE',summary,'parse');
+  } else if(scene==='shopping'){
+    const p=currentParsed;
+    const pr=PRODUCTS[p.product]||PRODUCTS.headphones;
+    addTrace('INPUT PARSE',
+      `<strong>Product:</strong> ${pr.name} (${p.product})<br>`+
+      `<strong>Budget:</strong> SGD ${p.budget}<br>`+
+      `<strong>Mode:</strong> ${modeLabel}`,'parse');
+  } else {
+    const p=currentParsed;
+    addTrace('INPUT PARSE',
+      `<strong>Headcount:</strong> ${p.headcount} people<br>`+
+      `<strong>Budget:</strong> SGD ${p.bpp}/pax (total SGD ${p.budget})<br>`+
+      `<strong>Halal required:</strong> ${p.hasHalal} · <strong>Vegetarian required:</strong> ${p.hasVeg}<br>`+
+      `<strong>Mode:</strong> ${modeLabel}`,'parse');
+  }
+
   if(demoMode||!key){
-    if(!demoMode) addTrace('INIT','No API key — running Demo Mode. The scripted orchestration uses real mock data driven by your input.');
     await runDemo();
   } else { await runAPI(); }
 }
