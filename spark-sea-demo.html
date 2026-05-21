@@ -140,11 +140,13 @@ textarea{background:transparent;border:none;color:var(--text);font-size:12px;lin
     </div>
     <div>
       <h1>Spark for Southeast Asia — Multi-Partner Orchestration Probe</h1>
-      <div class="hdr-sub">I/O 2026 · Gemini function-calling · 3 SEA agent scenarios · dynamic mock partner data</div>
+      <div class="hdr-sub">I/O 2026 · Gemini function-calling · 3 SEA agent scenarios · live Google Places API + mock partner data</div>
     </div>
   </div>
   <div class="hdr-right">
     <input type="password" id="apiKey" class="api-input" placeholder="Gemini API key (optional)" oninput="onKeyInput()">
+    <input type="password" id="placesKey" class="api-input" placeholder="Places API key (optional)" style="width:165px" oninput="onPlacesInput()" title="Google Places API key for live restaurant search (enable Maps Platform → Places API in Cloud Console)">
+    <div class="model-tag" id="placesTag" style="display:none"><span style="width:7px;height:7px;border-radius:50%;background:var(--red);display:inline-block"></span><span style="color:var(--red);font-size:11px">Places API ready</span></div>
     <button id="demoBtn" class="ctrl-btn" onclick="toggleDemo()"><span class="dot"></span><span id="demoLbl">Demo Mode</span></button>
     <div class="model-tag"><span class="model-dot"></span><span id="modelLbl">Ready</span></div>
   </div>
@@ -609,7 +611,7 @@ const TOOLS_TRAVEL=[
    },required:['destination_city','provider','arrival_time','cost_per_trip_sgd']}},
 
   {name:'find_restaurant',
-   description:'STEP 4. Find dinner restaurant. Name 2 specific real restaurants for the requested cuisine — one fine dining, one mid-range — with approximate SGD price per person. In SEA destinations proactively check halal certification. Then call set_budget_item(category="restaurant").',
+   description:'STEP 4. Search for dinner restaurant. The tool response will contain real results from Google Places API (source="google_places_live") or a stub. If live results are returned, select from those real venues and reason about your choice. If no live data, name 2 specific real restaurants using your knowledge. In SEA destinations proactively set halal_required per context. Then call set_budget_item(category="restaurant").',
    parameters:{type:'OBJECT',properties:{
      city:{type:'STRING'},cuisine:{type:'STRING'},
      halal_required:{type:'BOOLEAN'},party_size:{type:'NUMBER'},
@@ -995,6 +997,16 @@ function renderResult(tool,d){
   }
   if(tool==='book_ground_transport') return rows([['Provider',d.provider+' ('+d.vehicle+')'],['Route',d.pickup+' → '+d.dropoff],['Fare (each way)',''+d.local_ccy+' '+d.fare_local+' ≈ SGD '+d.fare_sgd],['Total (2 trips)','<span style="color:var(--green)">SGD '+r2(d.total_2trips_sgd).toFixed(2)+'</span>'],['ETA',d.eta_min+' min drive']]);
   if(tool==='find_restaurant'){
+    if(d&&d.source==='google_places_live'){
+      const liveBar='<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding:4px 8px;background:rgba(234,67,53,.12);border-radius:4px;font-size:10px;font-weight:600"><span style="width:7px;height:7px;border-radius:50%;background:var(--red);display:inline-block;flex-shrink:0"></span><span style="color:var(--red)">LIVE</span><span style="color:var(--muted);font-weight:400">Google Places API · '+d.results.length+' results</span></div>';
+      return liveBar+(d.results||[]).map((r,i)=>`<div class="foption ${i===0?'sel':''}">
+        <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:12px">${r.name}</div><div style="color:var(--muted);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.address}</div></div>
+        <div style="text-align:right;flex-shrink:0;padding-left:8px">
+          ${r.rating?`<div style="font-size:12px">⭐ ${r.rating}</div><div style="color:var(--muted);font-size:10px">${(r.user_ratings_total||0).toLocaleString()}</div>`:''}
+          ${r.price_level?`<div style="color:var(--muted);font-size:10px">${r.price_level}</div>`:''}
+        </div>
+      </div>`).join('');
+    }
     if(!d||!d.options) return '';
     const r=d.options[d.sel||0];
     return rows([['Selected',r.name],['Type',r.type],['Price/pax',''+c_local(r,d.fx)+' ≈ SGD '+Math.round(r.local/(d.fx||3.4))],['Halal',r.halal?'✓ Yes':'✗ No'],['Note',r.note]]);
@@ -1158,6 +1170,38 @@ async function callGemini(msgs){
   throw new Error(lastErr);
 }
 
+// ═══════════════════════════════════════════════════════════════
+// GOOGLE PLACES API — live restaurant search
+// ═══════════════════════════════════════════════════════════════
+async function callPlacesAPI(city, cuisine, halal_required){
+  const pk=$('placesKey').value.trim();
+  if(!pk) return null;
+  const q=(halal_required?'halal ':'')+cuisine+' restaurant in '+city;
+  try{
+    const res=await fetch('https://places.googleapis.com/v1/places:searchText',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'X-Goog-Api-Key':pk,
+        'X-Goog-FieldMask':'places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.priceLevel'
+      },
+      body:JSON.stringify({textQuery:q,maxResultCount:4,languageCode:'en'})
+    });
+    if(!res.ok){
+      const err=await res.text();
+      console.warn('[Places API]',res.status,err);
+      return null;
+    }
+    const data=await res.json();
+    return (data.places||[]).slice(0,3);
+  }catch(e){
+    console.warn('[Places API] fetch failed:',e);
+    return null;
+  }
+}
+
+function placesKeyReady(){ return $('placesKey').value.trim().length>0; }
+
 async function runAPI(){
   history=[{role:'user',parts:[{text:$('userInput').value.trim()}]}];
   $('modelLbl').textContent='Gemini 3.5 Flash';
@@ -1256,7 +1300,33 @@ async function runAPI(){
       let stub={status:'acknowledged',message:'Tool executed — see reasoning trace for analysis'};
       // Shopping and Food still use structured mocks (those aren't the problem)
       if(scene!=='travel') stub=generateMock(scene,fc.name,fc.args,currentParsed);
-      // For travel: shopping/food, budget bar updates come from set_budget_item instead
+      // ── find_restaurant: try live Google Places API first ───────
+      if(scene==='travel'&&fc.name==='find_restaurant'){
+        setStatus('Querying Google Places API…');
+        const placesData=await callPlacesAPI(fc.args.city,fc.args.cuisine,fc.args.halal_required);
+        if(placesData&&placesData.length>0){
+          const priceLabelMap={PRICE_LEVEL_FREE:'Free',PRICE_LEVEL_INEXPENSIVE:'$',PRICE_LEVEL_MODERATE:'$$',PRICE_LEVEL_EXPENSIVE:'$$$',PRICE_LEVEL_VERY_EXPENSIVE:'$$$$'};
+          stub={
+            source:'google_places_live',
+            query:(fc.args.halal_required?'halal ':'')+fc.args.cuisine+' restaurant in '+fc.args.city,
+            results:placesData.map(p=>({
+              name:p.displayName?.text||'Unknown',
+              address:p.formattedAddress||'',
+              rating:p.rating||null,
+              user_ratings_total:p.userRatingCount||0,
+              price_level:priceLabelMap[p.priceLevel]||p.priceLevel||null
+            })),
+            halal_required:fc.args.halal_required,
+            note:'Live data from Google Places API'
+          };
+          addTrace('PLACES API · LIVE DATA',
+            '🔴 <strong>Real Google Places API call</strong>\n'+
+            'Query: "'+stub.query+'"\n'+
+            'Results returned:\n'+stub.results.map((r,i)=>'  '+(i+1)+'. '+r.name+(r.rating?' ⭐'+r.rating:'')).join('\n')+
+            '\nGemini will select from these real venues and reason about the choice.','mem');
+        }
+      }
+      // For travel: budget bar updates come from set_budget_item instead
       if(scene==='shopping'){
         const pr=PRODUCTS[currentParsed.product]||PRODUCTS.headphones;
         if(fc.name==='search_products') setBudget(0,pr.listings[1].price_sgd);
@@ -1269,8 +1339,11 @@ async function runAPI(){
       }
       setDone(card);
       if(scene!=='travel') showResult(card,fc.name,stub);
-      else{
-        // Travel live mode: don't show mock table — Gemini's text IS the result
+      else if(stub.source==='google_places_live'){
+        // Show real Places data directly in the card
+        showResult(card,fc.name,stub);
+      } else {
+        // Travel live mode (no Places key): Gemini reasoning IS the result
         const el=card.querySelector('.tresult');
         el.classList.add('on');
         el.innerHTML='<div style="color:var(--muted);font-size:11px;font-style:italic">Gemini analysis in Reasoning Trace →</div>';
@@ -1373,11 +1446,17 @@ async function startOrchestration(){
   if(scene==='travel'){
     const p=currentParsed;
     const city=resolveCityData(p);
+    const placesStatus=(!demoMode&&key&&placesKeyReady())
+      ?'<span style="color:var(--red)">🔴 LIVE — real Google Places API</span>'
+      :(!demoMode&&key)
+        ?'<span style="color:var(--muted)">not provided — Gemini will use its own knowledge</span>'
+        :'<span style="color:var(--muted)">n/a (scripted mode)</span>';
     const summary=[
       `<strong>Destination:</strong> ${city.name}${p.destFound?' <span style="color:var(--green)">✓ (SEA DB)</span>':p.destRaw?' <span style="color:var(--yellow)">[dynamic — any city supported]</span>':' <span style="color:var(--muted)">[default: KUL]</span>'}`,
       `<strong>Cuisine:</strong> ${p.cuisine==='_default'?'<span style="color:var(--muted)">not specified — model will recommend</span>':p.cuisine+(p.cuisineFound?' <span style="color:var(--green)">✓</span>':'')}`,
       `<strong>Budget:</strong> SGD ${p.budget}`,
       `<strong>Transport:</strong> ${city.grabAvail?'Grab (SEA super-app available)':'<span style="color:var(--yellow)">'+city.transName+' — Grab not available here</span>'}`,
+      `<strong>Restaurant search:</strong> ${placesStatus}`,
       `<strong>Mode:</strong> ${modeLabel}`
     ].join('<br>');
     addTrace('INPUT PARSE',summary,'parse');
@@ -1434,6 +1513,11 @@ function onKeyInput(){
     $('demoLbl').textContent='Demo Mode';
   }
   $('modelLbl').textContent=hasKey?'API key set — will use Gemini':'Ready';
+}
+
+function onPlacesInput(){
+  const hasPk=placesKeyReady();
+  $('placesTag').style.display=hasPk?'flex':'none';
 }
 
 function toggleDemo(){
