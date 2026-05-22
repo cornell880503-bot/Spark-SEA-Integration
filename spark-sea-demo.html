@@ -654,7 +654,9 @@ const TOOLS_FOOD=[
 function buildPrompt(s,p){
   if(s==='travel'){
     const rawInput=$('userInput')?$('userInput').value.trim():'';
+    const today=new Date().toISOString().slice(0,10);
     return `You are a travel orchestration agent. Plan a trip from Singapore based on the user's request.
+TODAY'S DATE: ${today}. Use this as the reference for all date calculations. Never use dates before ${today.slice(0,4)}.
 
 USER REQUEST: "${rawInput}"
 BUDGET: SGD ${p.budget}
