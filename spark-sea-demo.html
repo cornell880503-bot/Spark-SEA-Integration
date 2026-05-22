@@ -1156,7 +1156,7 @@ async function callGemini(msgs){
         system_instruction:{parts:[{text:buildPrompt(scene,currentParsed)}]},
         contents:msgs,
         tools:[{functionDeclarations:getTools(scene)}],
-        generationConfig:{temperature:0.3,maxOutputTokens:2048}
+        generationConfig:{temperature:0.3,maxOutputTokens:2048,thinkingConfig:{thinkingBudget:2048}}
       })
     });
     if(res.ok){
@@ -1237,24 +1237,29 @@ async function runAPI(){
     }
     const parts=resp.candidates?.[0]?.content?.parts||[];
     history.push({role:'model',parts});
-    let reasoning='',fcs=[];
-    for(const p of parts){if(p.text)reasoning+=p.text;if(p.functionCall)fcs.push(p.functionCall);}
-    if(reasoning.trim()){
-      addTrace(fcs.length?'STEP '+(loops+1)+' · '+fcs[0].name.toUpperCase():'AGENT',reasoning.trim());
+    let reasoning='',thought='',fcs=[];
+    for(const p of parts){
+      if(p.thought&&p.text) thought+=p.text;  // thinking tokens
+      else if(p.text) reasoning+=p.text;
+      if(p.functionCall) fcs.push(p.functionCall);
+    }
+    // Prefer model's own reasoning text; fall back to thinking tokens; last resort: synthesise
+    const traceText=reasoning.trim()||thought.trim();
+    if(traceText){
+      const label=fcs.length?'STEP '+(loops+1)+' · '+fcs[0].name.toUpperCase():'AGENT';
+      addTrace(label, traceText+(thought.trim()&&!reasoning.trim()?'\n<span style="color:#484f58;font-size:10px;font-style:italic">[from model thinking tokens]</span>':''));
     } else if(fcs.length){
-      // Lite model skipped reasoning text — synthesise a trace entry from tool args
-      const fc0=fcs[0];
-      const a=fc0.args||{};
+      const fc0=fcs[0],a=fc0.args||{};
       const synth={
         search_flights:`Searching flights SIN → ${a.destination||'destination'} (${a.depart_date||''}–${a.return_date||''}). Evaluating airlines by price and schedule.`,
         book_hotel:`Finding hotels in ${a.city||'city'} (${a.check_in||''}–${a.check_out||''}). Budget ${a.budget_per_night_sgd?'SGD '+a.budget_per_night_sgd+'/night':''}, style: ${a.style||'any'}.`,
         book_ground_transport:`Booking ground transport in ${a.destination_city||a.city||'city'} via ${a.provider||'local transport'}. Arrival ${a.arrival_time||''}.`,
         find_restaurant:`Searching ${a.halal_required?'halal ':''} ${a.cuisine||''} restaurants in ${a.city||'city'} for ${a.party_size||1} at ${a.preferred_time||'dinner'}.`,
         set_budget_item:`Recording ${a.category||''}: SGD ${a.amount_sgd||0} — ${a.label||''}.`,
-        request_user_decision:`Budget conflict detected. Total SGD ${a.total_sgd||0} exceeds SGD ${a.budget_sgd||0}. Surfacing options to user.`
-      }[fc0.name]||`Calling ${fc0.name} with args: ${JSON.stringify(a).slice(0,120)}`;
+        request_user_decision:`Budget conflict detected. Total SGD ${a.total_sgd||0} exceeds SGD ${a.budget_sgd||0}. Surfacing trade-off options to user.`
+      }[fc0.name]||`Calling ${fc0.name}: ${JSON.stringify(a).slice(0,150)}`;
       addTrace('STEP '+(loops+1)+' · '+fc0.name.toUpperCase(),
-        '<span style="color:#484f58;font-size:10px;font-style:italic">[model skipped reasoning text — synthesised from tool args]</span>\n'+synth);
+        synth+'\n<span style="color:#484f58;font-size:10px;font-style:italic">[synthesised — model emitted no reasoning text]</span>');
     }
     if(!fcs.length){
       if(reasoning.includes('over_budget')||reasoning.includes('budget')||reasoning.includes('Option A')){
@@ -1395,13 +1400,18 @@ async function runReplanAPI(choice){
     catch{await runReplanDemo(choice);return;}
     const parts=resp.candidates?.[0]?.content?.parts||[];
     history.push({role:'model',parts});
-    let reasoning='',fcs=[];
-    for(const p of parts){if(p.text)reasoning+=p.text;if(p.functionCall)fcs.push(p.functionCall);}
-    if(reasoning.trim()){
-      addTrace('REPLAN · '+(fcs.length?fcs[0].name.toUpperCase():'COMPLETE'),reasoning.trim(),'mem');
+    let reasoning='',thought='',fcs=[];
+    for(const p of parts){
+      if(p.thought&&p.text) thought+=p.text;
+      else if(p.text) reasoning+=p.text;
+      if(p.functionCall) fcs.push(p.functionCall);
+    }
+    const traceText=reasoning.trim()||thought.trim();
+    if(traceText){
+      addTrace('REPLAN · '+(fcs.length?fcs[0].name.toUpperCase():'COMPLETE'),traceText,'mem');
     } else if(fcs.length){
       addTrace('REPLAN · '+fcs[0].name.toUpperCase(),
-        '<span style="color:#484f58;font-size:10px;font-style:italic">[model skipped reasoning text]</span>\nReplanning: calling '+fcs[0].name+' with updated parameters.','mem');
+        'Replanning with '+fcs[0].name+' using updated parameters.\n<span style="color:#484f58;font-size:10px;font-style:italic">[synthesised]</span>','mem');
     }
     if(!fcs.length) break;
     const frs=[];
