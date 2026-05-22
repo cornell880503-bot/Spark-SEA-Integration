@@ -659,7 +659,7 @@ function buildPrompt(s,p){
 USER REQUEST: "${rawInput}"
 BUDGET: SGD ${p.budget}
 
-MANDATORY TOOL SEQUENCE — you must call every tool in this exact order. Do NOT summarise the plan in text instead of calling tools.
+MANDATORY TOOL SEQUENCE — call every tool in this exact order. Do NOT summarise the plan in text instead of calling tools.
 
 Step 1 → search_flights: name 3 airlines on this route with real flight numbers and SGD prices. Pick best value; reject overpriced one.
 Step 2 → book_hotel: name 2 real hotels in this city with SGD/night prices. Recommend one; factor in number of nights from the user request.
@@ -668,7 +668,7 @@ Step 4 → find_restaurant: name 2 real restaurants for the cuisine requested. N
 After EACH of steps 1-4 → immediately call set_budget_item with the SGD cost.
 Final step → add up all set_budget_item values. If total > SGD ${p.budget}: call request_user_decision with two specific trade-offs (name the exact alternative + SGD saving).
 
-Write 1-2 sentences of reasoning before each tool call explaining your choice.`;
+CRITICAL — before EVERY tool call you MUST output at least one sentence of reasoning text explaining what you are doing and why. Never call a tool without preceding text. This is required for the orchestration trace.`;
   }
   if(s==='shopping'){
     const pr=PRODUCTS[p.product]||PRODUCTS.headphones;
@@ -1239,7 +1239,23 @@ async function runAPI(){
     history.push({role:'model',parts});
     let reasoning='',fcs=[];
     for(const p of parts){if(p.text)reasoning+=p.text;if(p.functionCall)fcs.push(p.functionCall);}
-    if(reasoning.trim()) addTrace(fcs.length?'STEP '+(loops+1)+' · '+fcs[0].name.toUpperCase():'AGENT',reasoning.trim());
+    if(reasoning.trim()){
+      addTrace(fcs.length?'STEP '+(loops+1)+' · '+fcs[0].name.toUpperCase():'AGENT',reasoning.trim());
+    } else if(fcs.length){
+      // Lite model skipped reasoning text — synthesise a trace entry from tool args
+      const fc0=fcs[0];
+      const a=fc0.args||{};
+      const synth={
+        search_flights:`Searching flights SIN → ${a.destination||'destination'} (${a.depart_date||''}–${a.return_date||''}). Evaluating airlines by price and schedule.`,
+        book_hotel:`Finding hotels in ${a.city||'city'} (${a.check_in||''}–${a.check_out||''}). Budget ${a.budget_per_night_sgd?'SGD '+a.budget_per_night_sgd+'/night':''}, style: ${a.style||'any'}.`,
+        book_ground_transport:`Booking ground transport in ${a.destination_city||a.city||'city'} via ${a.provider||'local transport'}. Arrival ${a.arrival_time||''}.`,
+        find_restaurant:`Searching ${a.halal_required?'halal ':''} ${a.cuisine||''} restaurants in ${a.city||'city'} for ${a.party_size||1} at ${a.preferred_time||'dinner'}.`,
+        set_budget_item:`Recording ${a.category||''}: SGD ${a.amount_sgd||0} — ${a.label||''}.`,
+        request_user_decision:`Budget conflict detected. Total SGD ${a.total_sgd||0} exceeds SGD ${a.budget_sgd||0}. Surfacing options to user.`
+      }[fc0.name]||`Calling ${fc0.name} with args: ${JSON.stringify(a).slice(0,120)}`;
+      addTrace('STEP '+(loops+1)+' · '+fc0.name.toUpperCase(),
+        '<span style="color:#484f58;font-size:10px;font-style:italic">[model skipped reasoning text — synthesised from tool args]</span>\n'+synth);
+    }
     if(!fcs.length){
       if(reasoning.includes('over_budget')||reasoning.includes('budget')||reasoning.includes('Option A')){
         $('overAlert').classList.add('on');
@@ -1381,7 +1397,12 @@ async function runReplanAPI(choice){
     history.push({role:'model',parts});
     let reasoning='',fcs=[];
     for(const p of parts){if(p.text)reasoning+=p.text;if(p.functionCall)fcs.push(p.functionCall);}
-    if(reasoning.trim()) addTrace('REPLAN · '+(fcs.length?fcs[0].name.toUpperCase():'COMPLETE'),reasoning.trim(),'mem');
+    if(reasoning.trim()){
+      addTrace('REPLAN · '+(fcs.length?fcs[0].name.toUpperCase():'COMPLETE'),reasoning.trim(),'mem');
+    } else if(fcs.length){
+      addTrace('REPLAN · '+fcs[0].name.toUpperCase(),
+        '<span style="color:#484f58;font-size:10px;font-style:italic">[model skipped reasoning text]</span>\nReplanning: calling '+fcs[0].name+' with updated parameters.','mem');
+    }
     if(!fcs.length) break;
     const frs=[];
     for(const fc of fcs){
