@@ -1146,17 +1146,20 @@ function getTools(s){if(s==='travel')return TOOLS_TRAVEL;if(s==='shopping')retur
 async function callGemini(msgs){
   const key=$('apiKey').value.trim();
   if(!key) throw new Error('no-key');
-  // Try models in order: 3.1-flash-lite-preview → 2.5-flash fallback
-  const models=['gemini-3.1-flash-lite-preview','gemini-2.5-flash'];
+  // Try every model in order — only stop early on true auth errors (key invalid)
+  const models=['gemini-3.1-flash-lite-preview','gemini-2.5-flash','gemini-2.0-flash'];
   let lastErr;
   for(const model of models){
+    // thinkingConfig only for models that support it (3.x / 2.5); skip for 2.0
+    const supportsThinking=!model.startsWith('gemini-2.0');
     const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,{
       method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         system_instruction:{parts:[{text:buildPrompt(scene,currentParsed)}]},
         contents:msgs,
         tools:[{functionDeclarations:getTools(scene)}],
-        generationConfig:{temperature:0.3,maxOutputTokens:2048,thinkingConfig:{thinkingBudget:2048}}
+        generationConfig:{temperature:0.3,maxOutputTokens:2048,
+          ...(supportsThinking?{thinkingConfig:{thinkingBudget:2048}}:{})}
       })
     });
     if(res.ok){
@@ -1165,7 +1168,11 @@ async function callGemini(msgs){
     }
     const e=await res.json();
     lastErr=e.error?.message||'HTTP '+res.status;
-    if(!lastErr.includes('not found')&&!lastErr.includes('404')) break; // only retry on model-not-found
+    // Stop trying if key is genuinely invalid (no point retrying other models)
+    const isAuthError=lastErr.includes('API_KEY_INVALID')||lastErr.toLowerCase().includes('api key not valid');
+    if(isAuthError) break;
+    // Otherwise (quota, model access, unsupported param) → try next model
+    console.warn('[Spark SEA] model',model,'failed:',lastErr,'→ trying next');
   }
   throw new Error(lastErr);
 }
@@ -1214,14 +1221,16 @@ async function runAPI(){
       const msg=err.message||String(err);
       console.error('[Spark SEA] Gemini API error:', msg, err);
       let hint='';
-      if(msg.includes('API_KEY_INVALID')||msg.toLowerCase().includes('invalid')||msg.includes('400'))
-        hint='→ API key invalid. Make sure you copied the full key from Google AI Studio.';
+      if(msg.includes('API_KEY_INVALID')||msg.toLowerCase().includes('api key not valid'))
+        hint='→ API key invalid. Get a fresh key at <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--yellow)">aistudio.google.com/apikey</a> and paste the full string.';
+      else if(msg.toLowerCase().includes('invalid')||msg.includes('400'))
+        hint='→ Bad request (400). The model may not support a parameter — all 3 fallback models were tried.';
       else if(msg.includes('PERMISSION_DENIED')||msg.includes('403'))
         hint='→ Key missing permission. Enable "Generative Language API" at console.cloud.google.com → APIs & Services.';
       else if(msg.includes('quota')||msg.includes('429')||msg.includes('RESOURCE_EXHAUSTED'))
-        hint='→ Rate limit hit. Wait ~30s and retry.';
+        hint='→ Rate limit hit across all models. Wait ~30s and retry, or enable Demo Mode.';
       else if(msg.includes('404')||msg.includes('not found'))
-        hint='→ Model not found. Both gemini-2.5-flash and gemini-2.0-flash failed.';
+        hint='→ All models returned 404. Try refreshing your API key.';
       // Stop — don't auto-fallback; let the user decide
       $('traceWrap').innerHTML += `<div class="trace-entry" style="border:1px solid var(--red);margin-top:6px">
         <div class="trace-step" style="color:var(--red);font-size:11px">⚠ GEMINI API ERROR — STOPPED</div>
